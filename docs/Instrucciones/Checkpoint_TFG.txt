@@ -1,0 +1,26 @@
+¿Qué debéis tener preparado para el checkpoint de SABITECH WEB?
+
+Hasta el checkpoint debéis desarrollar una primera versión funcional de la aplicación y recoger en la memoria parcial los avances de todos los módulos participantes.
+
+1. Definir y organizar el proyecto
+Concretad los requisitos, los perfiles de usuario y las reglas de reserva, cancelación y asistencia. Preparad la planificación, repartid las tareas y mantened actualizado el repositorio compartido de GitHub, registrando avances e incidencias.
+
+2. Diseñar la aplicación
+Elaborad el modelo de datos, los bocetos de las pantallas, los recorridos de usuario y la guía de estilo. Implementad las primeras pantallas adaptadas a móvil y realizad comprobaciones iniciales de accesibilidad.
+
+3. Conseguir una primera reserva funcional
+Preparad el frontend, el backend y la base de datos. La aplicación debe permitir identificar a un usuario de prueba, consultar el catálogo y el detalle de las charlas desde la API y realizar una reserva que permanezca guardada al volver a acceder. Comprobad una reserva válida, una reserva repetida y una charla sin plazas, incluyendo validaciones y mensajes para el usuario.
+
+4. Preparar el entorno y las siguientes funcionalidades
+Documentad la arquitectura y las instrucciones para ejecutar la versión parcial. Definid los permisos y el funcionamiento del correo de confirmación y del QR temporal, aportando diseños, prototipos o primeras pruebas e indicando lo que queda pendiente.
+
+5. Desarrollar la parte empresarial y de Digitalización
+Describid la empresa ficticia, su propuesta de valor, la forma jurídica, el organigrama y el borrador del plan de personal. Añadid una primera estimación de recursos y costes y una validación inicial de la idea. Comparad la gestión manual y digital de las jornadas e identificad los datos, las herramientas y las primeras medidas de protección de la información.
+
+6. Investigar y documentar el uso de IA
+Elaborad el informe sobre IA en programación a partir de vídeos en inglés, con citas y referencias. Preparad una síntesis oral en inglés en la que participéis ambos. Recoged también, de forma diferenciada, las herramientas de IA utilizadas realmente en vuestro proyecto, su finalidad y las comprobaciones realizadas.
+
+7. Preparar la entrega y la presentación
+Actualizad la memoria parcial con las evidencias y los resultados de las pruebas. Preparad el PowerPoint y ensayad una demostración del catálogo y de una reserva persistente. Cerrad la presentación con un plan de continuación que indique tareas pendientes, responsables, fechas y dependencias.
+
+Para entregar, subid un TXT con el enlace a GitHub y la versión del checkpoint, la memoria parcial en PDF y la presentación en PowerPoint. Ambos integrantes debéis conocer y poder explicar el trabajo realizado.

@@ -4,10 +4,10 @@ services:
     container_name: sabitech_mysql
     restart: always
     environment:
-      MYSQL_DATABASE: sabitech_db
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_USER: sabitech_user
-      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:

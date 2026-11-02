@@ -1,16 +1,40 @@
-# React + Vite
+# SABITECH – Frontend (React 19 + Vite 8)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SPA en JavaScript/JSX que consume la API de Laravel (`backend/app/Api`).
 
-Currently, two official plugins are available:
+## Arquitectura: organización por funcionalidad (feature-based)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```
+src/
+├─ app/          App.jsx, providers/ (contextos globales), router/ (rutas y guards por rol)
+├─ features/     un módulo por área funcional del backend
+│  ├─ auth/        login, sesión          ↔ Api/Controllers/Auth
+│  ├─ charlas/     catálogo y detalle     ↔ Api/Controllers/Public
+│  ├─ reservas/    reservar, QR, correo   ↔ Api/Controllers/Asistente
+│  ├─ acceso/      validación QR/manual   ↔ Api/Controllers/Acceso
+│  └─ admin/       charlas, ponentes, ubicaciones, reservas, asistencias ↔ Api/Controllers/Admin
+├─ shared/       código reutilizable: components/{ui,feedback}, layouts, hooks, utils, constants
+├─ lib/          infraestructura: cliente HTTP, almacenamiento de sesión, formateo de fechas
+├─ styles/       tokens (variables CSS), reset y estilos globales
+├─ assets/       images/, icons/
+└─ test/         configuración de pruebas
+```
 
-## React Compiler
+Cada feature contiene `api/` (llamadas HTTP), `hooks/`, `components/` y `pages/`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Convenciones
 
-## Expanding the ESLint configuration
+- Alias `@` → `src/` (`import X from '@/shared/...'`).
+- Una feature no importa de otra feature; lo común va a `shared/`.
+- Componentes en PascalCase, hooks `useXxx`, carpetas en minúsculas.
+- Perfiles: público, asistente, personal de acceso y administrador (rutas protegidas por rol).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Ejecución
+
+```bash
+cp .env.example .env   # VITE_API_URL
+npm install
+npm run dev
+npm run lint
+npm run build
+```

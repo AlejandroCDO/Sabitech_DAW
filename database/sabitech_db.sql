@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 02-11-2026 a las 12:44:22
+-- Tiempo de generación: 03-11-2026 a las 12:49:00
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -30,9 +30,8 @@ SET time_zone = "+00:00";
 CREATE TABLE `asistencias` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `reserva_id` bigint(20) UNSIGNED NOT NULL,
-  `usuario_id` bigint(20) UNSIGNED NOT NULL,
-  `charla_id` bigint(20) UNSIGNED NOT NULL,
   `validado_por` bigint(20) UNSIGNED NOT NULL,
+  `qr_token` varchar(128) DEFAULT NULL,
   `validada_en` timestamp NOT NULL DEFAULT current_timestamp(),
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -48,15 +47,16 @@ CREATE TABLE `charlas` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `ponente_id` bigint(20) UNSIGNED NOT NULL,
   `ubicacion_id` bigint(20) UNSIGNED NOT NULL,
-  `titulo` varchar(150) NOT NULL,
+  `titulo` varchar(100) NOT NULL,
   `descripcion` text NOT NULL,
   `inicio` datetime NOT NULL,
   `fin` datetime NOT NULL,
   `aforo` int(11) NOT NULL,
   `plazas_ocupadas` int(11) NOT NULL DEFAULT 0,
+  `cancelada` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ;
 
 -- --------------------------------------------------------
 
@@ -69,6 +69,8 @@ CREATE TABLE `ponentes` (
   `nombre` varchar(100) NOT NULL,
   `biografia` text DEFAULT NULL,
   `foto_url` varchar(255) DEFAULT NULL,
+  `especialidad` varchar(100) DEFAULT NULL,
+  `linkedin_url` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -83,13 +85,13 @@ CREATE TABLE `reservas` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `usuario_id` bigint(20) UNSIGNED NOT NULL,
   `charla_id` bigint(20) UNSIGNED NOT NULL,
-  `estado` enum('confirmada','cancelada') NOT NULL,
+  `estado` enum('pendiente','confirmada','cancelada') NOT NULL DEFAULT 'pendiente',
   `qr_secret` varchar(64) NOT NULL,
   `email_intentos` int(11) NOT NULL DEFAULT 0,
   `email_ultimo_envio` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ;
 
 -- --------------------------------------------------------
 
@@ -99,7 +101,7 @@ CREATE TABLE `reservas` (
 
 CREATE TABLE `roles` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `nombre` varchar(30) NOT NULL
+  `nombre` varchar(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -111,9 +113,12 @@ CREATE TABLE `roles` (
 CREATE TABLE `ubicaciones` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `provincia` varchar(100) NOT NULL,
-  `calle` varchar(150) NOT NULL,
+  `municipio` varchar(100) NOT NULL,
+  `calle` varchar(100) NOT NULL,
+  `codigo_postal` varchar(10) NOT NULL,
   `numero` varchar(10) NOT NULL,
   `puerta` varchar(10) DEFAULT NULL,
+  `nombre` varchar(50) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -129,7 +134,7 @@ CREATE TABLE `usuarios` (
   `rol_id` bigint(20) UNSIGNED NOT NULL,
   `nombre` varchar(100) NOT NULL,
   `email` varchar(150) NOT NULL,
-  `telefono` varchar(20) NOT NULL,
+  `telefono` varchar(15) NOT NULL,
   `fecha_nacimiento` date NOT NULL,
   `password` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -146,8 +151,7 @@ CREATE TABLE `usuarios` (
 ALTER TABLE `asistencias`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_asistencias_reserva_id` (`reserva_id`),
-  ADD KEY `idx_asistencias_usuario_id` (`usuario_id`),
-  ADD KEY `idx_asistencias_charla_id` (`charla_id`),
+  ADD UNIQUE KEY `uq_asistencias_qr_token` (`qr_token`),
   ADD KEY `idx_asistencias_validado_por` (`validado_por`);
 
 --
@@ -157,7 +161,7 @@ ALTER TABLE `charlas`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_charlas_ponente_id` (`ponente_id`),
   ADD KEY `idx_charlas_ubicacion_id` (`ubicacion_id`),
-  ADD KEY `idx_charlas_plazas_ocupadas` (`plazas_ocupadas`);
+  ADD KEY `idx_charlas_inicio` (`inicio`);
 
 --
 -- Indices de la tabla `ponentes`
@@ -171,7 +175,8 @@ ALTER TABLE `ponentes`
 ALTER TABLE `reservas`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_reservas_usuario_charla` (`usuario_id`,`charla_id`),
-  ADD KEY `idx_reservas_charla_id` (`charla_id`);
+  ADD UNIQUE KEY `uq_reservas_qr_secret` (`qr_secret`),
+  ADD KEY `idx_reservas_charla_estado` (`charla_id`,`estado`);
 
 --
 -- Indices de la tabla `roles`
@@ -184,7 +189,8 @@ ALTER TABLE `roles`
 -- Indices de la tabla `ubicaciones`
 --
 ALTER TABLE `ubicaciones`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ubicaciones_provincia_municipio` (`provincia`,`municipio`);
 
 --
 -- Indices de la tabla `usuarios`
@@ -248,9 +254,7 @@ ALTER TABLE `usuarios`
 -- Filtros para la tabla `asistencias`
 --
 ALTER TABLE `asistencias`
-  ADD CONSTRAINT `fk_asistencias_charla` FOREIGN KEY (`charla_id`) REFERENCES `charlas` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_asistencias_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_asistencias_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_asistencias_validador` FOREIGN KEY (`validado_por`) REFERENCES `usuarios` (`id`) ON UPDATE CASCADE;
 
 --

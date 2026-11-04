@@ -2,9 +2,11 @@
 
 namespace App\Api\Controllers\Admin;
 
+use App\Enums\EstadoReserva;
 use App\Http\Controllers\Controller;
 use App\Models\Charla;
 use App\Models\Reserva;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -15,7 +17,7 @@ class CharlaController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $perPage = min($request->integer('per_page', 15), 100);
+        $perPage = max(1, min($request->integer('per_page', 15), 100));
 
         $charlas = Charla::with(['ponente:id,nombre', 'ubicacion:id,nombre,municipio'])
             ->when($request->filled('ponente_id'), fn ($q) => $q->where('ponente_id', $request->integer('ponente_id')))
@@ -41,7 +43,7 @@ class CharlaController extends Controller
             'descripcion'  => ['required', 'string'],
             'inicio'       => ['required', 'date'],
             'fin'          => ['required', 'date', 'after:inicio'],   // CHECK (fin > inicio)
-            'aforo'        => ['required', 'integer', 'min:1'],      // CHECK (aforo > 0)
+            'aforo'        => ['required', 'integer', 'min:1', 'max:2147483647'],      // CHECK (aforo > 0)
         ]);
 
         $charla = Charla::create($data + [
@@ -61,7 +63,7 @@ class CharlaController extends Controller
             'descripcion'  => ['sometimes', 'string'],
             'inicio'       => ['sometimes', 'date'],
             'fin'          => ['sometimes', 'date'],
-            'aforo'        => ['sometimes', 'integer', 'min:1'],
+            'aforo'        => ['sometimes', 'integer', 'min:1', 'max:2147483647'],
         ]);
 
         DB::transaction(function () use ($data, $charla) {
@@ -102,8 +104,7 @@ class CharlaController extends Controller
             }
 
             Reserva::where('charla_id', $actual->id)
-                ->where('estado', '!=', 'cancelada')
-                ->update(['estado' => 'cancelada']);
+                ->activas()->update(['estado' => EstadoReserva::Cancelada->value]);
 
             $actual->update(['cancelada' => true, 'plazas_ocupadas' => 0]);
         });
@@ -119,7 +120,13 @@ class CharlaController extends Controller
             ], 409);
         }
 
-        $charla->delete();
+        try {
+            $charla->delete();
+        } catch (QueryException) {
+            return response()->json([
+                'message' => 'La charla tiene reservas. Cancélala en lugar de borrarla.',
+            ], 409);
+        }
 
         return response()->json(null, 204);
     }

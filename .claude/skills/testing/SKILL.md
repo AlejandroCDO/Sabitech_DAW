@@ -23,9 +23,9 @@ Después de cada implementación, antes de aceptar un trabajo y dentro de `relea
 **Sin ejecutor de pruebas**: React (no hay Vitest ni Testing Library). Añadirlos es instalar dependencias: requiere autorización del usuario.
 
 ## Procedimiento
-1. Comprueba prerrequisitos: `laravel/vendor`, `react/node_modules`, y PHP/Composer en el PATH. Si faltan, informa "NO EJECUTADO: falta X" y no lo instales sin autorización.
+1. Comprueba prerrequisitos: `backend/vendor`, `frontend/node_modules`, y PHP/Composer en el PATH. Si faltan, informa "NO EJECUTADO: falta X" y no lo instales sin autorización.
 2. Ejecuta primero las verificaciones del área tocada y después la suite completa del proyecto afectado.
-3. Para código nuevo de Laravel escribe pruebas en `laravel/tests/Feature` (HTTP, validación, autorización) o `laravel/tests/Unit` (lógica pura). Usa factories y `RefreshDatabase`.
+3. Para código nuevo de Laravel escribe pruebas en `backend/tests/Feature` (HTTP, validación, autorización) o `backend/tests/Unit` (lógica pura). Usa factories y `RefreshDatabase`.
 4. Casos mínimos por endpoint o regla: válido, inválido, sin permiso, límite (p. ej. el último hueco disponible) y repetición (misma operación dos veces).
 5. Registra la salida resumida de cada comando (número de pruebas, fallos, primer error).
 

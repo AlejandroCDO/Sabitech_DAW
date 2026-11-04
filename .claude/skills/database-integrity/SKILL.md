@@ -9,11 +9,11 @@ description: Integridad y consistencia de datos en SABITECH WEB: migraciones de 
 Que cada cambio de esquema sea reversible, coherente con los modelos y proteja la integridad de los datos con restricciones en la base de datos, no solo en la aplicación.
 
 ## Cuándo usarla
-Al crear o revisar migraciones (`laravel/database/migrations`), modelos, relaciones, factories o seeders, o al cambiar la configuración de conexión.
+Al crear o revisar migraciones (`backend/database/migrations`), modelos, relaciones, factories o seeders, o al cambiar la configuración de conexión.
 
 ## Estado de partida (verificado)
 - Migraciones por defecto: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`.
-- **Inconsistencia abierta**: `laravel/.env.example` usa `DB_CONNECTION=sqlite`, pero `docker-compose.yml` levanta MySQL 8 (`sabitech_db`). Las pruebas usan SQLite en memoria (`phpunit.xml`). Qué motor es el oficial es una decisión del usuario.
+- **Inconsistencia abierta**: `backend/.env.example` usa `DB_CONNECTION=sqlite`, pero `docker-compose.yml` levanta MySQL 8 (`sabitech_db`). Las pruebas usan SQLite en memoria (`phpunit.xml`). Qué motor es el oficial es una decisión del usuario.
 
 ## Procedimiento
 1. Crea migraciones nuevas con `php artisan make:migration`; **nunca edites una migración ya ejecutada en un entorno compartido**: crea otra.

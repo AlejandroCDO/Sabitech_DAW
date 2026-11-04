@@ -2,6 +2,7 @@
 
 namespace App\Api\Controllers\Admin;
 
+use App\Enums\EstadoReserva;
 use App\Http\Controllers\Controller;
 use App\Models\Charla;
 use App\Models\Reserva;
@@ -21,7 +22,7 @@ class ReservaCharlaController extends Controller
             'estado' => ['nullable', Rule::in(['pendiente', 'confirmada', 'cancelada'])],
         ]);
 
-        $perPage = min($request->integer('per_page', 20), 100);
+        $perPage = max(1, min($request->integer('per_page', 20), 100));
 
         $reservas = $charla->reservas()
             ->with('usuario:id,nombre,email,telefono')
@@ -40,20 +41,15 @@ class ReservaCharlaController extends Controller
      */
     public function cancelar(Charla $charla, Reserva $reserva): JsonResponse
     {
-        // La reserva tiene que pertenecer a esa charla
-        if ($reserva->charla_id !== $charla->id) {
-            abort(404);
-        }
-
         DB::transaction(function () use ($charla, $reserva) {
             $charlaBloqueada = Charla::lockForUpdate()->findOrFail($charla->id);
             $reservaActual   = Reserva::lockForUpdate()->findOrFail($reserva->id);
 
-            if ($reservaActual->estado === 'cancelada') {
+            if ($reservaActual->estado === EstadoReserva::Cancelada) {
                 return;
             }
 
-            $reservaActual->update(['estado' => 'cancelada']);
+            $reservaActual->update(['estado' => EstadoReserva::Cancelada]);
 
             if ($charlaBloqueada->plazas_ocupadas > 0) {
                 $charlaBloqueada->decrement('plazas_ocupadas');

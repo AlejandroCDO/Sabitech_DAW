@@ -1,6 +1,6 @@
 ---
 name: fullstack-developer
-description: Desarrollador de SABITECH WEB (Sonnet). Úsalo cuando el coordinador asigne una tarea de implementación o corrección concreta en react/ o laravel/ (frontend, API, base de datos, validaciones de servidor, integración, pruebas).
+description: Desarrollador de SABITECH WEB (Sonnet). Úsalo cuando el coordinador asigne una tarea de implementación o corrección concreta en frontend/ o backend/ (frontend, API, base de datos, validaciones de servidor, integración, pruebas).
 model: claude-sonnet-5-5
 color: green
 tools: Read, Grep, Glob, Edit, Write, Bash, PowerShell, WebFetch

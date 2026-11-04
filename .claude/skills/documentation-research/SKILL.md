@@ -14,7 +14,7 @@ Responder dudas técnicas con fuentes oficiales y de la versión que usa el proy
 - Cuando un hallazgo de revisión depende del comportamiento del framework.
 
 ## Procedimiento
-1. Obtén la versión real del archivo de dependencias: `react/package.json`, `laravel/composer.json` (o el lockfile si necesitas la versión exacta).
+1. Obtén la versión real del archivo de dependencias: `frontend/package.json`, `backend/composer.json` (o el lockfile si necesitas la versión exacta).
 2. Consulta primero la fuente oficial:
    - React: https://react.dev
    - Vite: https://vite.dev

@@ -4,6 +4,7 @@ namespace App\Api\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ubicacion;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -11,7 +12,7 @@ class UbicacionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $perPage = min($request->integer('per_page', 15), 100);
+        $perPage = max(1, min($request->integer('per_page', 15), 100));
 
         $ubicaciones = Ubicacion::query()
             ->when($request->filled('provincia'), fn ($q) => $q->where('provincia', $request->string('provincia')))
@@ -36,11 +37,11 @@ class UbicacionController extends Controller
             'municipio'     => ['required', 'string', 'max:100'],
             'calle'         => ['required', 'string', 'max:100'],
             'codigo_postal' => ['required', 'string', 'max:10'],
-            'numero'        => ['nullable', 'string', 'max:10'],
+            'numero'        => ['required', 'string', 'max:10'],
             'puerta'        => ['nullable', 'string', 'max:10'],
         ]);
 
-        return response()->json(Ubicacion::create($data), 201);
+        return response()->json(Ubicacion::create($data)->refresh(), 201);
     }
 
     public function update(Request $request, Ubicacion $ubicacion): JsonResponse
@@ -51,7 +52,7 @@ class UbicacionController extends Controller
             'municipio'     => ['sometimes', 'string', 'max:100'],
             'calle'         => ['sometimes', 'string', 'max:100'],
             'codigo_postal' => ['sometimes', 'string', 'max:10'],
-            'numero'        => ['nullable', 'string', 'max:10'],
+            'numero'        => ['sometimes', 'string', 'max:10'],
             'puerta'        => ['nullable', 'string', 'max:10'],
         ]);
 
@@ -68,7 +69,13 @@ class UbicacionController extends Controller
             ], 409);
         }
 
-        $ubicacion->delete();
+        try {
+            $ubicacion->delete();
+        } catch (QueryException) {
+            return response()->json([
+                'message' => 'La ubicación tiene charlas asociadas y no se puede eliminar.',
+            ], 409);
+        }
 
         return response()->json(null, 204);
     }

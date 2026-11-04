@@ -16,7 +16,7 @@ class AsistenciaCharlaController extends Controller
 {
     public function index(Request $request, Charla $charla): JsonResponse
     {
-        $perPage = min($request->integer('per_page', 20), 100);
+        $perPage = max(1, min($request->integer('per_page', 20), 100));
 
         $asistencias = Asistencia::query()
             ->whereHas('reserva', fn ($q) => $q->where('charla_id', $charla->id))
@@ -24,10 +24,8 @@ class AsistenciaCharlaController extends Controller
             ->latest('validada_en')
             ->paginate($perPage);
 
-        $reservasActivas = $charla->reservas()->where('estado', '!=', 'cancelada')->count();
-        $asistentes      = Asistencia::whereHas('reserva', fn ($q) => $q->where('charla_id', $charla->id))
-            ->whereNotNull('validada_en')
-            ->count();
+        $reservasActivas = $charla->reservas()->activas()->count();
+        $asistentes      = Asistencia::whereHas('reserva', fn ($q) => $q->where('charla_id', $charla->id)->activas())->count();
 
         return response()->json([
             'charla' => $charla->only(['id', 'titulo', 'aforo']),

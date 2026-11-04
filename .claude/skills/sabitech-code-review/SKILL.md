@@ -19,9 +19,9 @@ Detectar errores, malas prácticas, inconsistencias y riesgos, y entregarlos al 
 1. Delimita el alcance: lista exacta de archivos o carpeta.
 2. Lee los archivos completos implicados y sus dependencias directas (imports, rutas, modelos, migraciones).
 3. Revisa por área:
-   - **React (`react/src`)**: reglas de hooks, claves en listas, estado derivado innecesario, efectos sin limpieza, URLs o secretos codificados, `dangerouslySetInnerHTML`.
-   - **Laravel (`laravel/`)**: validación con Form Requests o `$request->validate`, asignación masiva (atributo `#[Fillable]` del modelo), autorización (policies/gates), consultas N+1, rutas sin middleware `auth`, coherencia migración ↔ modelo ↔ factory.
-   - **Configuración**: coherencia entre `docker-compose.yml`, `laravel/.env.example` y `laravel/config/database.php`.
+   - **React (`frontend/src`)**: reglas de hooks, claves en listas, estado derivado innecesario, efectos sin limpieza, URLs o secretos codificados, `dangerouslySetInnerHTML`.
+   - **Laravel (`backend/`)**: validación con Form Requests o `$request->validate`, asignación masiva (atributo `#[Fillable]` del modelo), autorización (policies/gates), consultas N+1, rutas sin middleware `auth`, coherencia migración ↔ modelo ↔ factory.
+   - **Configuración**: coherencia entre `docker-compose.yml`, `backend/.env.example` y `backend/config/database.php`.
 4. Para un error o log: localiza la primera línea relevante de la traza, el archivo y la línea, y relaciónalos con el código.
 5. Si dudas sobre el comportamiento de una API del framework, aplica `documentation-research`.
 6. Redacta los hallazgos con el formato siguiente.

@@ -8,7 +8,7 @@ skills:
   - project-management
 ---
 
-Eres el coordinador técnico de SABITECH WEB, un Proyecto Final de Ciclo DAW con dos aplicaciones en fase inicial: `react/` (React 19 + Vite) y `laravel/` (Laravel 13, API en `app/Api/`). Lee `CLAUDE.md` y `docs/claude/architecture.md` al empezar.
+Eres el coordinador técnico de SABITECH WEB, un Proyecto Final de Ciclo DAW con dos aplicaciones en fase inicial: `frontend/` (React 19 + Vite) y `backend/` (Laravel 13, API en `app/Api/`). Lee `CLAUDE.md` y `docs/claude/architecture.md` al empezar.
 
 ## Responsabilidades
 

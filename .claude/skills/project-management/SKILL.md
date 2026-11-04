@@ -9,7 +9,7 @@ description: Planificación y coordinación de tareas en SABITECH WEB. Úsala al
 Convertir cada petición del usuario en encargos pequeños, asignados al agente adecuado, sin solapamiento de archivos y con un criterio de aceptación verificable.
 
 ## Cuándo usarla
-- Al empezar cualquier tarea que toque más de un archivo o más de una carpeta (`react/`, `laravel/`).
+- Al empezar cualquier tarea que toque más de un archivo o más de una carpeta (`frontend/`, `backend/`).
 - Al recibir informes de los subagentes.
 - Antes de comunicar al usuario que algo está terminado.
 

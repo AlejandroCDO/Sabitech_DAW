@@ -6,6 +6,7 @@ use App\Enums\EstadoReserva;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Hidden(['qr_secret'])] // el secreto del QR nunca debe salir en las respuestas JSON
 class Reserva extends Model
 {
+    use HasFactory;
+
     protected $table = 'reservas';
 
     protected function casts(): array

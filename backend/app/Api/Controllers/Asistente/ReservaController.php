@@ -69,14 +69,17 @@ class ReservaController extends Controller
             }
 
             if ($existente !== null) {
-                // El índice único (usuario_id, charla_id) obliga a reactivar
-                // la reserva cancelada en lugar de crear una fila nueva.
+                // Se reactiva la reserva cancelada en lugar de crear una fila
+                // nueva (el índice único incluye clave_activa) y la plaza
+                // vuelve a ocuparse.
                 $existente->update([
-                    'estado' => EstadoReserva::Pendiente,
+                    'estado' => EstadoReserva::Confirmada,
                     'qr_secret' => self::generarQrSecret(),
                     'email_intentos' => 0,
                     'email_ultimo_envio' => null,
                 ]);
+
+                $charla->increment('plazas_ocupadas');
 
                 return $existente;
             }
@@ -84,7 +87,7 @@ class ReservaController extends Controller
             $reserva = Reserva::create([
                 'usuario_id' => $reservaData->usuarioId,
                 'charla_id' => $reservaData->charlaId,
-                'estado' => EstadoReserva::Pendiente,
+                'estado' => EstadoReserva::Confirmada,
                 'qr_secret' => self::generarQrSecret(),
             ]);
 
@@ -93,7 +96,8 @@ class ReservaController extends Controller
             return $reserva;
         });
 
-        // Si el correo falla la reserva no se pierde; queda pendiente de
+        // La plaza queda garantizada al reservar (estado confirmada). Si el
+        // correo falla la reserva no se pierde; queda pendiente de
         // reenvío y el usuario puede solicitarlo desde su listado.
         $this->enviarConfirmacion($reserva);
 

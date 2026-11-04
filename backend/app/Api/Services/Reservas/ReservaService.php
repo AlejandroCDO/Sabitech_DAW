@@ -31,6 +31,7 @@ class ReservaService
     /**
      * Reserva la charla indicada para el usuario autenticado.
      *
+     * La plaza queda garantizada al reservar: el estado inicial es confirmada.
      * Si el usuario tenía una reserva cancelada para la misma charla, la
      * reactiva en lugar de crear una fila nueva: el índice único
      * (usuario_id, charla_id, clave_activa) solo admite una reserva activa
@@ -64,7 +65,7 @@ class ReservaService
                     }
 
                     $existente->update([
-                        'estado' => EstadoReserva::Pendiente,
+                        'estado' => EstadoReserva::Confirmada,
                         'qr_secret' => $this->qrToken->generarSecret(),
                         'email_intentos' => 0,
                         'email_ultimo_envio' => null,
@@ -78,7 +79,7 @@ class ReservaService
                 $reserva = Reserva::create([
                     'usuario_id' => $datos->usuarioId,
                     'charla_id' => $datos->charlaId,
-                    'estado' => EstadoReserva::Pendiente,
+                    'estado' => EstadoReserva::Confirmada,
                     'qr_secret' => $this->qrToken->generarSecret(),
                 ]);
 

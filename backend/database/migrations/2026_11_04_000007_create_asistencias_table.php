@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unique('qr_token', 'uq_asistencias_qr_token');
             $table->index('validado_por', 'idx_asistencias_validado_por');
             $table->foreign('reserva_id', 'fk_asistencias_reserva')->references('id')->on('reservas')
-                ->cascadeOnUpdate()->cascadeOnDelete();
+                ->cascadeOnUpdate()->restrictOnDelete();
             $table->foreign('validado_por', 'fk_asistencias_validador')->references('id')->on('usuarios')
                 ->cascadeOnUpdate()->restrictOnDelete();
         });

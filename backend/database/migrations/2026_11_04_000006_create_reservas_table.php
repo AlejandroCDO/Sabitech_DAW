@@ -16,10 +16,14 @@ return new class extends Migration
             $table->string('qr_secret', 64);
             $table->integer('email_intentos')->default(0);
             $table->timestamp('email_ultimo_envio')->nullable();
+            // 1 mientras la reserva ocupa plaza, NULL si está cancelada: el UNIQUE
+            // solo restringe reservas activas (NULL no colisiona en MySQL ni SQLite).
+            $table->tinyInteger('clave_activa')->nullable()
+                ->storedAs("CASE WHEN estado IN ('pendiente','confirmada') THEN 1 ELSE NULL END");
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
-            $table->unique(['usuario_id', 'charla_id'], 'uq_reservas_usuario_charla');
+            $table->unique(['usuario_id', 'charla_id', 'clave_activa'], 'uq_reservas_usuario_charla_activa');
             $table->unique('qr_secret', 'uq_reservas_qr_secret');
             $table->index(['charla_id', 'estado'], 'idx_reservas_charla_estado');
             $table->foreign('usuario_id', 'fk_reservas_usuario')->references('id')->on('usuarios')

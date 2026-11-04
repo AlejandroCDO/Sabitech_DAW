@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 03-11-2026 a las 12:49:00
+-- Tiempo de generación: 04-11-2026 a las 09:58:37
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -89,6 +89,7 @@ CREATE TABLE `reservas` (
   `qr_secret` varchar(64) NOT NULL,
   `email_intentos` int(11) NOT NULL DEFAULT 0,
   `email_ultimo_envio` timestamp NULL DEFAULT NULL,
+  `clave_activa` tinyint(4) GENERATED ALWAYS AS (if(`estado` in ('pendiente','confirmada'),1,NULL)) STORED,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ;
@@ -174,8 +175,8 @@ ALTER TABLE `ponentes`
 --
 ALTER TABLE `reservas`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_reservas_usuario_charla` (`usuario_id`,`charla_id`),
   ADD UNIQUE KEY `uq_reservas_qr_secret` (`qr_secret`),
+  ADD UNIQUE KEY `uq_reservas_usuario_charla_activa` (`usuario_id`,`charla_id`,`clave_activa`),
   ADD KEY `idx_reservas_charla_estado` (`charla_id`,`estado`);
 
 --
@@ -254,7 +255,7 @@ ALTER TABLE `usuarios`
 -- Filtros para la tabla `asistencias`
 --
 ALTER TABLE `asistencias`
-  ADD CONSTRAINT `fk_asistencias_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_asistencias_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_asistencias_validador` FOREIGN KEY (`validado_por`) REFERENCES `usuarios` (`id`) ON UPDATE CASCADE;
 
 --

@@ -1,10 +1,14 @@
 -- =====================================================
--- SABITECH WEB - Base de datos (versión corregida)
--- Coincide con el diagrama "Modelo de Datos - SABITECH WEB (versión corregida)"
--- Motor: MySQL 8 / MariaDB 10.4+ (los CHECK se aplican de verdad)
--- Úsalo sobre una base de datos VACÍA. Si ya tienes datos, usa
--- migracion_desde_sql_actual.sql
+-- SABITECH WEB - Base de datos
+-- Modelo de datos: "Modelo de datos - SABITECH WEB (corregido)"
+-- Motor: MySQL 8.0.16+ / MariaDB 10.4+ (los CHECK se aplican de verdad)
+-- Usar sobre una base de datos VACÍA.
 -- =====================================================
+
+-- ATENCIÓN: descomenta la siguiente línea solo si quieres borrar
+-- la base de datos actual y empezar de cero (se pierden todos los datos).
+-- DROP DATABASE IF EXISTS sabitech_db;
+
 CREATE DATABASE IF NOT EXISTS sabitech_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_general_ci;
@@ -56,6 +60,7 @@ CREATE TABLE ponentes (
 
 -- =====================================================
 -- 4. usuarios  (FK -> roles)
+--    Relación: roles 1 - N usuarios
 -- =====================================================
 CREATE TABLE usuarios (
   id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -77,7 +82,8 @@ CREATE TABLE usuarios (
 
 -- =====================================================
 -- 5. charlas  (FK -> ponentes, ubicaciones)
---    Relaciones: ponente 1-N charlas, ubicacion 1-N charlas
+--    Relaciones: ponentes 1 - N charlas (imparte)
+--                ubicaciones 1 - N charlas (acoge)
 -- =====================================================
 CREATE TABLE charlas (
   id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -96,9 +102,9 @@ CREATE TABLE charlas (
   KEY idx_charlas_ponente_id (ponente_id),
   KEY idx_charlas_ubicacion_id (ubicacion_id),
   KEY idx_charlas_inicio (inicio),
-  CONSTRAINT chk_charlas_aforo         CHECK (aforo > 0),
-  CONSTRAINT chk_charlas_plazas        CHECK (plazas_ocupadas >= 0 AND plazas_ocupadas <= aforo),
-  CONSTRAINT chk_charlas_fechas        CHECK (fin > inicio),
+  CONSTRAINT chk_charlas_fechas  CHECK (fin > inicio),
+  CONSTRAINT chk_charlas_aforo   CHECK (aforo > 0),
+  CONSTRAINT chk_charlas_plazas  CHECK (plazas_ocupadas >= 0 AND plazas_ocupadas <= aforo),
   CONSTRAINT fk_charlas_ponente
     FOREIGN KEY (ponente_id) REFERENCES ponentes (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -109,8 +115,16 @@ CREATE TABLE charlas (
 
 -- =====================================================
 -- 6. reservas  (FK -> usuarios, charlas)
---    Una charla tiene N reservas; cada reserva es de 1 charla.
---    UNIQUE (usuario_id, charla_id): nadie reserva dos veces la misma charla.
+--    Relaciones: usuarios 1 - N reservas (realiza)
+--                charlas  1 - N reservas (recibe)
+--
+--    clave_activa: columna generada.
+--      = 1    si la reserva está 'pendiente' o 'confirmada'
+--      = NULL si está 'cancelada'
+--    UNIQUE (usuario_id, charla_id, clave_activa):
+--      impide dos reservas ACTIVAS de la misma persona en la misma charla,
+--      pero permite volver a reservar tras cancelar (MySQL/MariaDB
+--      permiten varios NULL en un índice UNIQUE).
 -- =====================================================
 CREATE TABLE reservas (
   id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -120,10 +134,13 @@ CREATE TABLE reservas (
   qr_secret           VARCHAR(64)     NOT NULL,
   email_intentos      INT             NOT NULL DEFAULT 0,
   email_ultimo_envio  TIMESTAMP       NULL DEFAULT NULL,
+  clave_activa        TINYINT         GENERATED ALWAYS AS (
+                        IF(estado IN ('pendiente','confirmada'), 1, NULL)
+                      ) STORED,
   created_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_reservas_usuario_charla (usuario_id, charla_id),
+  UNIQUE KEY uq_reservas_usuario_charla_activa (usuario_id, charla_id, clave_activa),
   UNIQUE KEY uq_reservas_qr_secret (qr_secret),
   KEY idx_reservas_charla_estado (charla_id, estado),
   CONSTRAINT chk_reservas_intentos CHECK (email_intentos >= 0),
@@ -137,9 +154,10 @@ CREATE TABLE reservas (
 
 -- =====================================================
 -- 7. asistencias  (FK -> reservas, usuarios[validador])
---    Relación reservas 1 - 0..1 asistencias (UNIQUE reserva_id).
---    La charla y el asistente se obtienen a través de la reserva,
---    por eso NO hay usuario_id ni charla_id aquí.
+--    Relaciones: reservas 1 - 0..1 asistencias (genera)
+--                usuarios 1 - N asistencias   (valida)
+--    reserva_id es FK y UNIQUE. La charla y el asistente se obtienen
+--    a través de la reserva.
 -- =====================================================
 CREATE TABLE asistencias (
   id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -155,7 +173,7 @@ CREATE TABLE asistencias (
   KEY idx_asistencias_validado_por (validado_por),
   CONSTRAINT fk_asistencias_reserva
     FOREIGN KEY (reserva_id) REFERENCES reservas (id)
-    ON UPDATE CASCADE ON DELETE CASCADE,
+    ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT fk_asistencias_validador
     FOREIGN KEY (validado_por) REFERENCES usuarios (id)
     ON UPDATE CASCADE ON DELETE RESTRICT

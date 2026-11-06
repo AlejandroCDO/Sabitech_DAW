@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Reserva;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OAT;
 
 class QrController extends Controller
 {
@@ -23,6 +24,24 @@ class QrController extends Controller
      * ValidaciónQr puede recomputarlo para la ventana actual (y tolerar la
      * anterior) sin guardar estado.
      */
+    #[OAT\Get(
+        path: '/api/asistente/reservas/{reserva}/qr',
+        operationId: 'obtenerQrReserva',
+        description: 'Token HMAC temporal del QR de una reserva propia, con el '
+            .'momento exacto de caducidad (frontera global de 30 s). Falla con 409 '
+            .'si la reserva o su charla están canceladas o la charla ya terminó.',
+        tags: ['Asistente'],
+        parameters: [new OAT\Parameter(name: 'reserva', description: 'Id de la reserva.', in: 'path', required: true, example: 41)],
+        responses: [
+            new OAT\Response(response: '200', description: 'Token del QR con su caducidad.', content: [
+                new OAT\JsonContent(ref: '#/components/schemas/QrToken'),
+            ]),
+            new OAT\Response(response: '401', ref: '#/components/responses/401'),
+            new OAT\Response(response: '403', ref: '#/components/responses/403'),
+            new OAT\Response(response: '404', ref: '#/components/responses/404'),
+            new OAT\Response(response: '409', ref: '#/components/responses/409'),
+        ],
+    )]
     public function mostrar(Request $request, Reserva $reserva): JsonResponse
     {
         if ($reserva->usuario_id !== $request->user()->id) {

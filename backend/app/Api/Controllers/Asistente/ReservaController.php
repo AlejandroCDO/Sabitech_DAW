@@ -11,10 +11,26 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use OpenApi\Attributes as OAT;
 use Throwable;
 
 class ReservaController extends Controller
 {
+    #[OAT\Get(
+        path: '/api/asistente/reservas',
+        operationId: 'listarReservasAsistente',
+        description: 'Reservas del usuario autenticado, de la más reciente a la más '
+            .'antigua, cada una con su charla, ubicación y ponente. El secreto del QR '
+            .'nunca se incluye.',
+        tags: ['Asistente'],
+        responses: [
+            new OAT\Response(response: '200', description: 'Reservas del asistente.', content: [
+                new OAT\JsonContent(type: 'array', items: new OAT\Items(ref: '#/components/schemas/Reserva')),
+            ]),
+            new OAT\Response(response: '401', ref: '#/components/responses/401'),
+            new OAT\Response(response: '403', ref: '#/components/responses/403'),
+        ],
+    )]
     /**
      * Reservas del usuario autenticado, de la más reciente a la más antigua.
      */
@@ -29,6 +45,32 @@ class ReservaController extends Controller
         return response()->json($reservas);
     }
 
+    #[OAT\Post(
+        path: '/api/asistente/reservas',
+        operationId: 'crearReserva',
+        description: 'Reserva la charla indicada para el usuario autenticado. La reserva '
+            .'se queda en estado `confirmada` y ocupa una plaza. Si el usuario tenía una '
+            .'reserva cancelada de esa charla, se reactiva la misma fila. Devuelve 409 '
+            .'si la charla está cancelada, si ya ha empezado, si el usuario ya tiene '
+            .'otra reserva para ella o si no quedan plazas.',
+        tags: ['Asistente'],
+        requestBody: new OAT\RequestBody(
+            required: true,
+            content: [new OAT\MediaType(mediaType: 'application/json', schema: new OAT\Schema(
+                required: ['charla_id'],
+                properties: [new OAT\Property(property: 'charla_id', type: 'integer', example: 12)],
+            ))],
+        ),
+        responses: [
+            new OAT\Response(response: '201', description: 'Reserva creada o reactivada.', content: [
+                new OAT\JsonContent(ref: '#/components/schemas/Reserva'),
+            ]),
+            new OAT\Response(response: '401', ref: '#/components/responses/401'),
+            new OAT\Response(response: '403', ref: '#/components/responses/403'),
+            new OAT\Response(response: '409', ref: '#/components/responses/409'),
+            new OAT\Response(response: '422', ref: '#/components/responses/422'),
+        ],
+    )]
     /**
      * Reserva la charla indicada para el usuario autenticado.
      *
@@ -107,6 +149,23 @@ class ReservaController extends Controller
         );
     }
 
+    #[OAT\Delete(
+        path: '/api/asistente/reservas/{reserva}',
+        operationId: 'cancelarReserva',
+        description: 'Cancela una reserva propia y libera su plaza. Operación '
+            .'idempotente: si ya estaba cancelada responde 200 sin cambios. En '
+            .'reservas de otros usuarios responde 404 para no revelar su existencia.',
+        tags: ['Asistente'],
+        parameters: [new OAT\Parameter(name: 'reserva', description: 'Id de la reserva.', in: 'path', required: true, example: 41)],
+        responses: [
+            new OAT\Response(response: '200', description: 'Reserva cancelada (o ya lo estaba).', content: [
+                new OAT\JsonContent(ref: '#/components/schemas/Reserva'),
+            ]),
+            new OAT\Response(response: '401', ref: '#/components/responses/401'),
+            new OAT\Response(response: '403', ref: '#/components/responses/403'),
+            new OAT\Response(response: '404', ref: '#/components/responses/404'),
+        ],
+    )]
     /**
      * Cancela una reserva propia y libera la plaza.
      *

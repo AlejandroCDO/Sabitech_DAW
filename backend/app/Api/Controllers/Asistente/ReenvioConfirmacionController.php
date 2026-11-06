@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use OpenApi\Attributes as OAT;
 use Throwable;
 
 class ReenvioConfirmacionController extends Controller
@@ -18,6 +19,31 @@ class ReenvioConfirmacionController extends Controller
 
     /** Envíos de confirmación máximos por reserva. */
     private const INTENTOS_MAXIMOS = 5;
+
+    #[OAT\Post(
+        path: '/api/asistente/reservas/{reserva}/reenviar-confirmacion',
+        operationId: 'reenviarConfirmacion',
+        description: 'Reenvía el correo de confirmación de una reserva propia, con '
+            .'control anti-spam: máx. 5 envíos por reserva y al menos 60 s entre '
+            .'envíos. No cambia el estado de la reserva.',
+        tags: ['Asistente'],
+        parameters: [new OAT\Parameter(name: 'reserva', description: 'Id de la reserva.', in: 'path', required: true, example: 41)],
+        responses: [
+            new OAT\Response(response: '200', description: 'Resultado del envío.', content: [new OAT\JsonContent(
+                properties: [
+                    new OAT\Property(property: 'email_enviado', description: 'True si el correo se envió ahora; false si el envío falló.', type: 'boolean', example: true),
+                    new OAT\Property(property: 'email_intentos', description: 'Envíos reales acumulados de la reserva.', type: 'integer', example: 3),
+                    new OAT\Property(property: 'email_ultimo_envio', description: 'Momento del último envío real, o null si nunca se envió.', type: 'string', format: 'date-time', nullable: true),
+                ],
+                type: 'object',
+            )]),
+            new OAT\Response(response: '401', ref: '#/components/responses/401'),
+            new OAT\Response(response: '403', ref: '#/components/responses/403'),
+            new OAT\Response(response: '404', ref: '#/components/responses/404'),
+            new OAT\Response(response: '409', ref: '#/components/responses/409'),
+            new OAT\Response(response: '429', ref: '#/components/responses/429'),
+        ],
+    )]
 
     /**
      * Reenvía la confirmación de una reserva propia, controlado para que

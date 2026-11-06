@@ -1,0 +1,2621 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "API de SABITECH",
+        "description": "API REST del proyecto final de DAW: gestión de charlas, reservas,\nasistencias con QR y perfiles de usuario.\n\nTodos los endpoints están bajo el prefijo `/api` y responden JSON\n(las peticiones pueden enviar `Accept: application/json`).\n\nLas peticiones protegidas utilizan un token de Sanctum, que se envía\nen la cabecera `Authorization: Bearer <token>`. El token se obtiene\nen `POST /api/auth/login` y se introduce con el botón **Authorize**\n(con el botón verde y el candado a la derecha: pegar solo el token,\nsin la palabra Bearer).",
+        "contact": {
+            "name": "SABITECH (Proyecto Final DAW)"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Servidor de desarrollo local (php artisan serve)"
+        }
+    ],
+    "paths": {
+        "/api/acceso/charlas/{charla}/reservas": {
+            "get": {
+                "tags": [
+                    "Personal de acceso"
+                ],
+                "description": "Reservas activas (no canceladas) de una charla, ordenadas por id, para localizar al asistente en la puerta. Si se envía `q`, filtra por coincidencia en nombre o email del asistente. Incluye los datos del usuario y, si existe, la asistencia asociada, para poder validar manualmente.",
+                "operationId": "buscarReservasAcceso",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Texto a buscar en nombre o email del asistente (máx. 100).",
+                        "required": false,
+                        "example": "Alberto"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 20).",
+                        "required": false,
+                        "example": 20
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado paginado de reservas activas de la charla.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ReservaAdmin"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/MetaPaginacion"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/UrlPaginacion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/acceso/asistencias/manual": {
+            "post": {
+                "tags": [
+                    "Personal de acceso"
+                ],
+                "description": "Registra la asistencia a partir de la reserva y la charla indicadas, cuando el asistente no puede mostrar su QR (por ejemplo, por problemas de batería). Devuelve 409 si la reserva no está activa, la charla no coincide con la de la reserva o ya está registrada la asistencia.",
+                "operationId": "validarAsistenciaManual",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "reserva_id",
+                                    "charla_id"
+                                ],
+                                "properties": {
+                                    "reserva_id": {
+                                        "type": "integer",
+                                        "example": 41
+                                    },
+                                    "charla_id": {
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Asistencia registrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AsistenciaAdmin"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/acceso/asistencias/qr": {
+            "post": {
+                "tags": [
+                    "Personal de acceso"
+                ],
+                "description": "Valida el token del QR que muestra el asistente (obtenido en `GET /api/asistente/reservas/{reserva}/qr`) y registra su asistencia a la charla indicada. Devuelve 409 si el token ya no es válido (caducado o incorrecto), la reserva no está activa, la charla no coincide o la asistencia ya estaba registrada.",
+                "operationId": "validarAsistenciaQr",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "qr_token",
+                                    "charla_id"
+                                ],
+                                "properties": {
+                                    "qr_token": {
+                                        "description": "Token del QR tal y como lo devuelve la ruta del asistente.",
+                                        "type": "string",
+                                        "example": "a91c7d2c...3f36f4",
+                                        "maxLength": 128
+                                    },
+                                    "charla_id": {
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Asistencia registrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AsistenciaAdmin"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/admin/charlas/{charla}/asistencias": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Asistencias registradas de una charla (se resuelven por su reserva), ordenadas por la más reciente validada, con un resumen porcentual u discreto de reservas activas, asistentes y ausentes.",
+                "operationId": "adminListarAsistenciasCharla",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 20).",
+                        "required": false,
+                        "example": 20
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Asistencias y resumen de la charla.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "charla",
+                                        "resumen",
+                                        "asistencias"
+                                    ],
+                                    "properties": {
+                                        "charla": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "titulo": {
+                                                    "type": "string"
+                                                },
+                                                "aforo": {
+                                                    "type": "integer",
+                                                    "example": 50
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "resumen": {
+                                            "properties": {
+                                                "reservas_activas": {
+                                                    "description": "Reservas no canceladas de la charla.",
+                                                    "type": "integer",
+                                                    "example": 30
+                                                },
+                                                "asistentes": {
+                                                    "description": "Asistencias registradas de reservas activas.",
+                                                    "type": "integer",
+                                                    "example": 28
+                                                },
+                                                "no_asistentes": {
+                                                    "description": "Ausentes: `reservas_activas - asistentes`, nunca negativo (nunca por debajo de 0).",
+                                                    "type": "integer",
+                                                    "example": 2
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "asistencias": {
+                                            "description": "Colección paginada de asistencias.",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/AsistenciaAdmin"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/MetaPaginacion"
+                                                },
+                                                "links": {
+                                                    "$ref": "#/components/schemas/UrlPaginacion"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            }
+        },
+        "/api/admin/charlas": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Listado completo de charlas (incluye las canceladas y las pasadas), ordenadas por inicio, con ponente y ubicación resumidos.",
+                "operationId": "adminListarCharlas",
+                "parameters": [
+                    {
+                        "name": "ponente_id",
+                        "in": "query",
+                        "description": "Filtrar por id de ponente.",
+                        "required": false,
+                        "example": 3
+                    },
+                    {
+                        "name": "ubicacion_id",
+                        "in": "query",
+                        "description": "Filtrar por id de ubicación.",
+                        "required": false,
+                        "example": 2
+                    },
+                    {
+                        "name": "solo_activas",
+                        "in": "query",
+                        "description": "Si vale 1, solo charlas no canceladas.",
+                        "required": false,
+                        "example": 1
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 15).",
+                        "required": false,
+                        "example": 15
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado paginado de charlas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CharlaAdmin"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/MetaPaginacion"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/UrlPaginacion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Crea una charla nueva con `plazas_ocupadas` 0 y `cancelada` false.",
+                "operationId": "adminCrearCharla",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ponente_id",
+                                    "ubicacion_id",
+                                    "titulo",
+                                    "descripcion",
+                                    "inicio",
+                                    "fin",
+                                    "aforo"
+                                ],
+                                "properties": {
+                                    "ponente_id": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "ubicacion_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "titulo": {
+                                        "type": "string",
+                                        "example": "Introducción a la IA",
+                                        "maxLength": 100
+                                    },
+                                    "descripcion": {
+                                        "type": "string"
+                                    },
+                                    "inicio": {
+                                        "description": "Momento en el que empieza.",
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-11-20 10:00:00"
+                                    },
+                                    "fin": {
+                                        "description": "Momento en el que termina; debe ser posterior a `inicio`.",
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-11-20 12:00:00"
+                                    },
+                                    "aforo": {
+                                        "description": "Aforo máximo de plazas (al menos 1).",
+                                        "type": "integer",
+                                        "example": 50,
+                                        "maximum": 2147483647,
+                                        "minimum": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Charla creada, con ponente y ubicación cargados.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharlaAdmin"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/admin/charlas/{charla}": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Detalle de una charla con su ponente y su ubicación completos.",
+                "operationId": "adminMostrarCharla",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la charla.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharlaAdmin"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Actualiza los campos enviados de una charla. Comprueba sobre la fila bloqueada que `fin` sea posterior a `inicio` y que el nuevo aforo no sea menor que las plazas ya ocupadas (si lo es, 422). También responde PATCH.",
+                "operationId": "adminActualizarCharla",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    }
+                ],
+                "requestBody": {
+                    "description": "Solo los campos que se quieren cambiar.",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "ponente_id": {
+                                        "type": "integer",
+                                        "example": 4
+                                    },
+                                    "ubicacion_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "titulo": {
+                                        "type": "string",
+                                        "example": "Título actualizado",
+                                        "maxLength": 100
+                                    },
+                                    "descripcion": {
+                                        "type": "string"
+                                    },
+                                    "inicio": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-11-21 10:00:00"
+                                    },
+                                    "fin": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-11-21 12:00:00"
+                                    },
+                                    "aforo": {
+                                        "type": "integer",
+                                        "example": 60,
+                                        "minimum": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Charla actualizada, con ponente y ubicación cargados.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharlaAdmin"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Elimina físicamente la charla. Solo si no tiene reservas: si tienen reservas responde 409 y hay que cancelarla en su lugar.",
+                "operationId": "adminEliminarCharla",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Charla eliminada."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    }
+                }
+            }
+        },
+        "/api/admin/charlas/{charla}/cancelar": {
+            "post": {
+                "tags": [
+                    "Administración"
+                ],
+                "summary": "Cancela la charla y todas sus reservas activas.",
+                "description": "Cancela la charla y sus reservas activas, y pone `plazas_ocupadas` a 0. Idempotente: si ya estaba cancelada responde 200 sin cambios.",
+                "operationId": "adminCancelarCharla",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Charla cancelada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharlaAdmin"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            }
+        },
+        "/api/admin/ponentes": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Listado de ponentes ordenado por nombre.",
+                "operationId": "adminListarPonentes",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Filtrar por coincidencia en el nombre.",
+                        "required": false,
+                        "example": "Ada"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 15).",
+                        "required": false,
+                        "example": 15
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado paginado de ponentes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ponente"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/MetaPaginacion"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/UrlPaginacion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Administración"
+                ],
+                "operationId": "adminCrearPonente",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombre"
+                                ],
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Ada Lovelace",
+                                        "maxLength": 100
+                                    },
+                                    "biografia": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "foto_url": {
+                                        "description": "URL de la foto (http o https).",
+                                        "type": "string",
+                                        "format": "uri",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    },
+                                    "especialidad": {
+                                        "type": "string",
+                                        "example": "Inteligencia artificial",
+                                        "nullable": true,
+                                        "maxLength": 100
+                                    },
+                                    "linkedin_url": {
+                                        "description": "URL de LinkedIn (http o https).",
+                                        "type": "string",
+                                        "format": "uri",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ponente creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ponente"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/admin/ponentes/{ponente}": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "operationId": "adminMostrarPonente",
+                "parameters": [
+                    {
+                        "name": "ponente",
+                        "in": "path",
+                        "description": "Id del ponente.",
+                        "required": true,
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ponente completo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ponente"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Actualiza los campos enviados. También responde PATCH.",
+                "operationId": "adminActualizarPonente",
+                "parameters": [
+                    {
+                        "name": "ponente",
+                        "in": "path",
+                        "description": "Id del ponente.",
+                        "required": true,
+                        "example": 3
+                    }
+                ],
+                "requestBody": {
+                    "description": "Solo los campos que se quieren cambiar.",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Ada Lovelace",
+                                        "maxLength": 100
+                                    },
+                                    "biografia": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "foto_url": {
+                                        "description": "URL de la foto (http o https).",
+                                        "type": "string",
+                                        "format": "uri",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    },
+                                    "especialidad": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "maxLength": 100
+                                    },
+                                    "linkedin_url": {
+                                        "description": "URL de LinkedIn (http o https).",
+                                        "type": "string",
+                                        "format": "uri",
+                                        "nullable": true,
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ponente actualizado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ponente"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Elimina físicamente el ponente. Solo si no tiene charlas asignadas; en caso contrario responde 409.",
+                "operationId": "adminEliminarPonente",
+                "parameters": [
+                    {
+                        "name": "ponente",
+                        "in": "path",
+                        "description": "Id del ponente.",
+                        "required": true,
+                        "example": 3
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Ponente eliminado."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    }
+                }
+            }
+        },
+        "/api/admin/charlas/{charla}/reservas": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Reservas de una charla (de todas, incluidas canceladas; para filtrar usa `estado`), de la más reciente a la más antigua, junto con un resumen de la charla, con el usuario de cada reserva.",
+                "operationId": "adminListarReservasCharla",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    },
+                    {
+                        "name": "estado",
+                        "in": "query",
+                        "description": "Filtrar por estado de la reserva.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pendiente",
+                                "confirmada",
+                                "cancelada"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 20).",
+                        "required": false,
+                        "example": 20
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reservas de la charla.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "charla",
+                                        "reservas"
+                                    ],
+                                    "properties": {
+                                        "charla": {
+                                            "description": "Resumen de la charla.",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "titulo": {
+                                                    "type": "string"
+                                                },
+                                                "aforo": {
+                                                    "type": "integer",
+                                                    "example": 50
+                                                },
+                                                "plazas_ocupadas": {
+                                                    "type": "integer",
+                                                    "example": 23
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "reservas": {
+                                            "description": "Colección paginada de reservas.",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ReservaAdmin"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/MetaPaginacion"
+                                                },
+                                                "links": {
+                                                    "$ref": "#/components/schemas/UrlPaginacion"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/admin/charlas/{charla}/reservas/{reserva}/cancelar": {
+            "post": {
+                "tags": [
+                    "Administración"
+                ],
+                "summary": "Cancela una reserva concreta y libera su plaza.",
+                "description": "Cancela una reserva concreta y libera su plaza. Idempotente: si ya estaba cancelada responde 200 sin cambios.",
+                "operationId": "adminCancelarReserva",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    },
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "description": "Id de la reserva.",
+                        "required": true,
+                        "example": 41
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reserva cancelada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Reserva"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            }
+        },
+        "/api/admin/ubicaciones": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Listado de ubicaciones ordenado por provincia y municipio.",
+                "operationId": "adminListarUbicaciones",
+                "parameters": [
+                    {
+                        "name": "provincia",
+                        "in": "query",
+                        "description": "Filtrar por provincia exacta.",
+                        "required": false,
+                        "example": "Alicante"
+                    },
+                    {
+                        "name": "municipio",
+                        "in": "query",
+                        "description": "Filtrar por municipio exacto.",
+                        "required": false,
+                        "example": "San Vicente del Raspeig"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 15).",
+                        "required": false,
+                        "example": 15
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado paginado de ubicaciones.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ubicacion"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/MetaPaginacion"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/UrlPaginacion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Administración"
+                ],
+                "operationId": "adminCrearUbicacion",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nombre",
+                                    "provincia",
+                                    "municipio",
+                                    "calle",
+                                    "codigo_postal",
+                                    "numero"
+                                ],
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Aula Magna",
+                                        "maxLength": 50
+                                    },
+                                    "provincia": {
+                                        "type": "string",
+                                        "example": "Alicante",
+                                        "maxLength": 100
+                                    },
+                                    "municipio": {
+                                        "type": "string",
+                                        "example": "San Vicente del Raspeig",
+                                        "maxLength": 100
+                                    },
+                                    "calle": {
+                                        "type": "string",
+                                        "example": "Calle Alcalá de Henares",
+                                        "maxLength": 100
+                                    },
+                                    "codigo_postal": {
+                                        "type": "string",
+                                        "example": "03690",
+                                        "maxLength": 10
+                                    },
+                                    "numero": {
+                                        "type": "string",
+                                        "example": "1",
+                                        "maxLength": 10
+                                    },
+                                    "puerta": {
+                                        "type": "string",
+                                        "example": "2B",
+                                        "nullable": true,
+                                        "maxLength": 10
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ubicación creada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ubicacion"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/admin/ubicaciones/{ubicacion}": {
+            "get": {
+                "tags": [
+                    "Administración"
+                ],
+                "operationId": "adminMostrarUbicacion",
+                "parameters": [
+                    {
+                        "name": "ubicacion",
+                        "in": "path",
+                        "description": "Id de la ubicación.",
+                        "required": true,
+                        "example": 2
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ubicación completa.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ubicacion"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Actualiza los campos enviados. También responde PATCH.",
+                "operationId": "adminActualizarUbicacion",
+                "parameters": [
+                    {
+                        "name": "ubicacion",
+                        "in": "path",
+                        "description": "Id de la ubicación.",
+                        "required": true,
+                        "example": 2
+                    }
+                ],
+                "requestBody": {
+                    "description": "Solo los campos que se quieren cambiar.",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "nombre": {
+                                        "type": "string",
+                                        "example": "Aula Magna",
+                                        "maxLength": 50
+                                    },
+                                    "provincia": {
+                                        "type": "string",
+                                        "example": "Alicante",
+                                        "maxLength": 100
+                                    },
+                                    "municipio": {
+                                        "type": "string",
+                                        "maxLength": 100
+                                    },
+                                    "calle": {
+                                        "type": "string",
+                                        "maxLength": 100
+                                    },
+                                    "codigo_postal": {
+                                        "type": "string",
+                                        "example": "03690",
+                                        "maxLength": 10
+                                    },
+                                    "numero": {
+                                        "type": "string",
+                                        "example": "1",
+                                        "maxLength": 10
+                                    },
+                                    "puerta": {
+                                        "type": "string",
+                                        "example": "2B",
+                                        "nullable": true,
+                                        "maxLength": 10
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ubicación actualizada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ubicacion"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Administración"
+                ],
+                "description": "Elimina físicamente la ubicación. Solo si no tiene charlas asociadas; en caso contrario responde 409.",
+                "operationId": "adminEliminarUbicacion",
+                "parameters": [
+                    {
+                        "name": "ubicacion",
+                        "in": "path",
+                        "description": "Id de la ubicación.",
+                        "required": true,
+                        "example": 2
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Ubicación eliminada."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    }
+                }
+            }
+        },
+        "/api/asistente/reservas/{reserva}/qr": {
+            "get": {
+                "tags": [
+                    "Asistente"
+                ],
+                "summary": "Token temporal del QR de una reserva propia y activa.\n\nLa validez caduca en la próxima frontera de 30 s (máximo 30 s), de\nmodo que la renovación en pantalla coincida con una caducidad real\ncomprobable en el servidor.\n\nEl token es compatible con la validación del personal de acceso:\ntoken = hash_hmac('sha256', qr_secret, expira_en), de modo que\nValidaciónQr puede recomputarlo para la ventana actual (y tolerar la\nanterior) sin guardar estado.",
+                "description": "Token HMAC temporal del QR de una reserva propia, con el momento exacto de caducidad (frontera global de 30 s). Falla con 409 si la reserva o su charla están canceladas o la charla ya terminó.",
+                "operationId": "obtenerQrReserva",
+                "parameters": [
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "description": "Id de la reserva.",
+                        "required": true,
+                        "example": 41
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token del QR con su caducidad.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QrToken"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    }
+                }
+            }
+        },
+        "/api/asistente/reservas/{reserva}/reenviar-confirmacion": {
+            "post": {
+                "tags": [
+                    "Asistente"
+                ],
+                "summary": "Reenvía la confirmación de una reserva propia, controlado para que\nnadie lo use como spam y sin crear una segunda inscripción.",
+                "description": "Reenvía el correo de confirmación de una reserva propia, con control anti-spam: máx. 5 envíos por reserva y al menos 60 s entre envíos. No cambia el estado de la reserva.",
+                "operationId": "reenviarConfirmacion",
+                "parameters": [
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "description": "Id de la reserva.",
+                        "required": true,
+                        "example": 41
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultado del envío.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "email_enviado": {
+                                            "description": "True si el correo se envió ahora; false si el envío falló.",
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "email_intentos": {
+                                            "description": "Envíos reales acumulados de la reserva.",
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "email_ultimo_envio": {
+                                            "description": "Momento del último envío real, o null si nunca se envió.",
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/429"
+                    }
+                }
+            }
+        },
+        "/api/asistente/reservas": {
+            "get": {
+                "tags": [
+                    "Asistente"
+                ],
+                "summary": "Reservas del usuario autenticado, de la más reciente a la más antigua.",
+                "description": "Reservas del usuario autenticado, de la más reciente a la más antigua, cada una con su charla, ubicación y ponente. El secreto del QR nunca se incluye.",
+                "operationId": "listarReservasAsistente",
+                "responses": {
+                    "200": {
+                        "description": "Reservas del asistente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Reserva"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Asistente"
+                ],
+                "summary": "Reserva la charla indicada para el usuario autenticado.\n\nLa exclusión mutua sobre la fila de la charla garantiza que la\nconcurrencia de última plaza no supere el aforo.",
+                "description": "Reserva la charla indicada para el usuario autenticado. La reserva se queda en estado `confirmada` y ocupa una plaza. Si el usuario tenía una reserva cancelada de esa charla, se reactiva la misma fila. Devuelve 409 si la charla está cancelada, si ya ha empezado, si el usuario ya tiene otra reserva para ella o si no quedan plazas.",
+                "operationId": "crearReserva",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "charla_id"
+                                ],
+                                "properties": {
+                                    "charla_id": {
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Reserva creada o reactivada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Reserva"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/409"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/asistente/reservas/{reserva}": {
+            "delete": {
+                "tags": [
+                    "Asistente"
+                ],
+                "summary": "Cancela una reserva propia y libera la plaza.\n\nSi ya estaba cancelada no se toca nada (operación idempotente).",
+                "description": "Cancela una reserva propia y libera su plaza. Operación idempotente: si ya estaba cancelada responde 200 sin cambios. En reservas de otros usuarios responde 404 para no revelar su existencia.",
+                "operationId": "cancelarReserva",
+                "parameters": [
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "description": "Id de la reserva.",
+                        "required": true,
+                        "example": 41
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reserva cancelada (o ya lo estaba).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Reserva"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Inicia sesión y devuelve un token de API (Sanctum) junto al perfil.",
+                "description": "Autentica con email y contraseña y devuelve un token de Sanctum junto al perfil del usuario con su rol. El token no caduca automáticamente: se revoca solo con logout. El mensaje de error es genérico para no revelar si el email existe.",
+                "operationId": "login",
+                "requestBody": {
+                    "description": "Credenciales del usuario.",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "asistente1@sabitech.test",
+                                        "maxLength": 150
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sesión iniciada: token y usuario.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "token": {
+                                            "description": "Token de Sanctum en claro. Enviarlo como Authorization: Bearer <token>.",
+                                            "type": "string",
+                                            "example": "73|YSfGk7..."
+                                        },
+                                        "usuario": {
+                                            "$ref": "#/components/schemas/Usuario"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Devuelve el perfil del usuario autenticado con su rol.",
+                "description": "Perfil del usuario autenticado con su rol.",
+                "operationId": "perfilUsuario",
+                "responses": {
+                    "200": {
+                        "description": "Usuario autenticado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Usuario"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cierra la sesión revocando el token con el que se hizo la petición.",
+                "description": "Revoca el token de Sanctum con el que se hizo la petición.",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "schema": "Error"
+                                },
+                                "example": {
+                                    "message": "Sesión cerrada correctamente."
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/charlas": {
+            "get": {
+                "tags": [
+                    "Público"
+                ],
+                "description": "Catálogo de charlas activas para el público: solo charlas no canceladas que aún no han empezado (su `fin` coincide con la hora actual o es posterior), ordenadas por fecha de inicio. Admite filtrar por provincia y paginar. Cada elemento trae ponente y ubicación.",
+                "operationId": "listarCharlasPublicas",
+                "parameters": [
+                    {
+                        "name": "provincia",
+                        "in": "query",
+                        "description": "Filtrar por provincia de la ubicación.",
+                        "required": false,
+                        "example": "Alicante"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página (entre 1 y 100, por defecto 15).",
+                        "required": false,
+                        "example": 15
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Página a consultar.",
+                        "required": false,
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado paginado de charlas activas.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CharlaCatalogo"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/MetaPaginacion"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/UrlPaginacion"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422"
+                    }
+                }
+            }
+        },
+        "/api/charlas/{charla}": {
+            "get": {
+                "tags": [
+                    "Público"
+                ],
+                "description": "Detalle de una charla. A diferencia del listado, también devuelve charlas ya canceladas (campos `cancelada: true`).",
+                "operationId": "mostrarCharlaPublica",
+                "parameters": [
+                    {
+                        "name": "charla",
+                        "in": "path",
+                        "description": "Id de la charla.",
+                        "required": true,
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle de la charla con su ponente y su ubicación.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CharlaCatalogo"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    }
+                }
+            }
+        },
+        "/api/provincias": {
+            "get": {
+                "tags": [
+                    "Público"
+                ],
+                "description": "Provincias (sin repetir y ordenadas alfabéticamente) que tienen alguna ubicación registrada. Se usa para el filtro de provincia del catálogo.",
+                "operationId": "listarProvincias",
+                "responses": {
+                    "200": {
+                        "description": "Provincias con al menos una ubicación.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "description": "Lista de nombres de provincia.",
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "example": "Alicante"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AsistenciaAdmin": {
+                "required": [
+                    "id",
+                    "reserva_id",
+                    "validado_por",
+                    "metodo",
+                    "validada_en"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Asistencia registrada por el personal de acceso, según AsistenciaAdminResource.",
+                        "type": "integer",
+                        "example": 9
+                    },
+                    "reserva_id": {
+                        "type": "integer",
+                        "example": 41
+                    },
+                    "validado_por": {
+                        "description": "Id del usuario (personal de acceso) que validó la asistencia.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "metodo": {
+                        "type": "string",
+                        "example": "qr",
+                        "enum": [
+                            "qr",
+                            "manual"
+                        ]
+                    },
+                    "validada_en": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "validador": {
+                        "$ref": "#/components/schemas/Usuario"
+                    },
+                    "reserva": {
+                        "$ref": "#/components/schemas/ReservaAdmin"
+                    }
+                },
+                "type": "object"
+            },
+            "CharlaAdmin": {
+                "required": [
+                    "id",
+                    "ponente_id",
+                    "ubicacion_id",
+                    "titulo",
+                    "descripcion",
+                    "inicio",
+                    "fin",
+                    "aforo",
+                    "plazas_ocupadas",
+                    "cancelada"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Charla completa tal y como la devuelve el perfil de administración\n(modelo Eloquent serializado, con las relaciones cargadas según la ruta).",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "ponente_id": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "ubicacion_id": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "titulo": {
+                        "type": "string",
+                        "example": "Introducción a la IA"
+                    },
+                    "descripcion": {
+                        "type": "string"
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-20 10:00:00"
+                    },
+                    "fin": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-20 12:00:00"
+                    },
+                    "aforo": {
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "plazas_ocupadas": {
+                        "type": "integer",
+                        "example": 23
+                    },
+                    "cancelada": {
+                        "type": "boolean"
+                    },
+                    "ponente": {
+                        "$ref": "#/components/schemas/Ponente"
+                    },
+                    "ubicacion": {
+                        "$ref": "#/components/schemas/Ubicacion"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "CharlaCatalogo": {
+                "required": [
+                    "id",
+                    "titulo",
+                    "descripcion",
+                    "inicio",
+                    "fin",
+                    "aforo",
+                    "plazas_disponibles",
+                    "cancelada"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Charla tal y como se publica en el catálogo público y en las reservas del\nasistente, con el porcentaje calculado de plazas disponibles.",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "titulo": {
+                        "type": "string",
+                        "example": "Introducción a la IA"
+                    },
+                    "descripcion": {
+                        "type": "string",
+                        "example": "Charla amena sobre lo que es la inteligencia artificial."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-20 10:00:00"
+                    },
+                    "fin": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-20 12:00:00"
+                    },
+                    "aforo": {
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "plazas_disponibles": {
+                        "description": "Sitios libres calculados como `max(aforo - plazas_ocupadas, 0)`.",
+                        "type": "integer",
+                        "example": 27
+                    },
+                    "cancelada": {
+                        "type": "boolean"
+                    },
+                    "ponente": {
+                        "$ref": "#/components/schemas/Ponente"
+                    },
+                    "ubicacion": {
+                        "$ref": "#/components/schemas/Ubicacion"
+                    }
+                },
+                "type": "object"
+            },
+            "Error": {
+                "properties": {
+                    "message": {
+                        "description": "Mensaje del error.",
+                        "type": "string",
+                        "example": "No tienes permisos para realizar esta acción."
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorValidacion": {
+                "properties": {
+                    "message": {
+                        "description": "Mensaje general.",
+                        "type": "string",
+                        "example": "The email field is required."
+                    },
+                    "errors": {
+                        "description": "Errores por campo.",
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "LinkPaginacion": {
+                "properties": {
+                    "url": {
+                        "description": "Enlace de paginación del paginador de Laravel.",
+                        "type": "string",
+                        "example": "http://localhost:8000/api/charlas?page=2",
+                        "nullable": true
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "2"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "MetaPaginacion": {
+                "properties": {
+                    "current_page": {
+                        "description": "Metadatos del paginador estándar de Laravel (SimplePagination).",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "from": {
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "last_page": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "links": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LinkPaginacion"
+                        }
+                    },
+                    "path": {
+                        "type": "string",
+                        "example": "http://localhost:8000/api/charlas"
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "to": {
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 53
+                    }
+                },
+                "type": "object"
+            },
+            "Ponente": {
+                "required": [
+                    "id",
+                    "nombre"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Ponente de una charla.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "example": "Ada Lovelace"
+                    },
+                    "biografia": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "foto_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https://picsum.photos/300",
+                        "nullable": true
+                    },
+                    "especialidad": {
+                        "type": "string",
+                        "example": "Inteligencia artificial",
+                        "nullable": true
+                    },
+                    "linkedin_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https://www.linkedin.com/in/ada",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "QrToken": {
+                "required": [
+                    "reserva_id",
+                    "token",
+                    "expira_en"
+                ],
+                "properties": {
+                    "reserva_id": {
+                        "description": "Token temporal del QR de una reserva, válido hasta la siguiente frontera de 30 s.",
+                        "type": "integer",
+                        "example": 41
+                    },
+                    "token": {
+                        "description": "hash_hmac('sha256', qr_secret, expira) en hexadecimal.",
+                        "type": "string",
+                        "example": "a91c7d2c9de3f5173ffa5d4a703b475f0937f86811916a6ad20933b3d3a336f4"
+                    },
+                    "expira_en": {
+                        "description": "Momento (frontera global de 30 s) en el que el token caduca.",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-18 10:05:30"
+                    }
+                },
+                "type": "object"
+            },
+            "Reserva": {
+                "required": [
+                    "id",
+                    "usuario_id",
+                    "charla_id",
+                    "estado"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Reserva tal y como la ve el asistente (modelo serializado con la charla\ncargada; el secreto del QR nunca se expone).",
+                        "type": "integer",
+                        "example": 41
+                    },
+                    "usuario_id": {
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "charla_id": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "estado": {
+                        "type": "string",
+                        "example": "confirmada",
+                        "enum": [
+                            "pendiente",
+                            "confirmada",
+                            "cancelada"
+                        ]
+                    },
+                    "email_intentos": {
+                        "description": "Envíos reales de confirmación realizados.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "email_ultimo_envio": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "charla": {
+                        "$ref": "#/components/schemas/CharlaAdmin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "ReservaAdmin": {
+                "required": [
+                    "id",
+                    "charla_id",
+                    "estado"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Reserva documentada por el recurso ReservaAdminResource, usada en las\nlistas del personal de acceso y del administrador.",
+                        "type": "integer",
+                        "example": 41
+                    },
+                    "charla_id": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "estado": {
+                        "type": "string",
+                        "example": "confirmada",
+                        "enum": [
+                            "pendiente",
+                            "confirmada",
+                            "cancelada"
+                        ]
+                    },
+                    "email_intentos": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "email_ultimo_envio": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "usuario": {
+                        "$ref": "#/components/schemas/Usuario"
+                    },
+                    "asistencia": {
+                        "$ref": "#/components/schemas/AsistenciaAdmin"
+                    }
+                },
+                "type": "object"
+            },
+            "Rol": {
+                "required": [
+                    "id",
+                    "nombre"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Rol de un usuario.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "example": "asistente"
+                    }
+                },
+                "type": "object"
+            },
+            "Ubicacion": {
+                "required": [
+                    "id",
+                    "nombre",
+                    "provincia",
+                    "municipio",
+                    "calle",
+                    "codigo_postal",
+                    "numero"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Ubicación física donde se imparte la charla.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "example": "Aula Magna"
+                    },
+                    "provincia": {
+                        "type": "string",
+                        "example": "Alicante"
+                    },
+                    "municipio": {
+                        "type": "string",
+                        "example": "San Vicente del Raspeig"
+                    },
+                    "calle": {
+                        "type": "string",
+                        "example": "Calle Alcalá de Henares"
+                    },
+                    "codigo_postal": {
+                        "type": "string",
+                        "example": "03690"
+                    },
+                    "numero": {
+                        "type": "string",
+                        "example": "1"
+                    },
+                    "puerta": {
+                        "type": "string",
+                        "example": "2B",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "UrlPaginacion": {
+                "properties": {
+                    "first": {
+                        "description": "URLs de navegación del paginador de Laravel (primera, última, anterior, siguiente).",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "last": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "prev": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "Usuario": {
+                "required": [
+                    "id",
+                    "rol_id",
+                    "nombre",
+                    "email"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Usuario del sistema; el backend devuelve la contraseña oculta y carga el rol.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "rol_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "example": "Alberto Bellanato"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "admin@sabitech.test"
+                    },
+                    "telefono": {
+                        "type": "string",
+                        "example": "600123456",
+                        "nullable": true
+                    },
+                    "fecha_nacimiento": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2004-03-15",
+                        "nullable": true
+                    },
+                    "rol": {
+                        "$ref": "#/components/schemas/Rol"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "responses": {
+            "401": {
+                "description": "No autenticado: falta la cabecera Authorization o el token no es válido.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "schema": "Error"
+                        },
+                        "example": {
+                            "message": "Unauthenticated."
+                        }
+                    }
+                }
+            },
+            "403": {
+                "description": "Autenticado pero sin el rol necesario para la acción.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "schema": "Error"
+                        },
+                        "example": {
+                            "message": "No tienes permisos para realizar esta acción."
+                        }
+                    }
+                }
+            },
+            "404": {
+                "description": "Recurso no encontrado (o no visible para el usuario autenticado).",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "schema": "Error"
+                        }
+                    }
+                }
+            },
+            "409": {
+                "description": "Conflicto con las reglas de negocio: el recurso no admite la acción en su estado actual.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "schema": "Error"
+                        }
+                    }
+                }
+            },
+            "429": {
+                "description": "Demasiadas peticiones: se alcanzó el límite controlado por la aplicación.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "schema": "Error"
+                        }
+                    }
+                }
+            },
+            "422": {
+                "description": "Validación incorrecta: el cuerpo de la petición no cumple las reglas.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "schema": "ErrorValidacion"
+                        }
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Token de API de Laravel Sanctum obtenido en POST /api/auth/login. Enviar sin la palabra Bearer.",
+                "bearerFormat": "Sanctum",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Público",
+            "description": "Catálogo de charlas y provincias, sin autenticación."
+        },
+        {
+            "name": "Autenticación",
+            "description": "Login, perfil y logout con tokens de Sanctum."
+        },
+        {
+            "name": "Asistente",
+            "description": "Acciones del asistente autenticado (rol asistente)."
+        },
+        {
+            "name": "Personal de acceso",
+            "description": "Validación de asistencias en la puerta (roles acceso y admin)."
+        },
+        {
+            "name": "Administración",
+            "description": "Gestión de charlas, ponentes, ubicaciones (rol admin)."
+        }
+    ]
+}

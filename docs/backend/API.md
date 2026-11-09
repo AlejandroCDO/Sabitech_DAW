@@ -2,6 +2,8 @@
 
 Documento basado en `backend/routes/api.php` y los controladores actuales. Todas las rutas llevan el prefijo `/api`. Las peticiones deben enviar `Accept: application/json` (el backend responde JSON en `api/*` de todos modos).
 
+Swagger UI con la misma especificación (generada con l5-swagger a partir de los controladores): `http://localhost:8000/api/docs` (JSON en `/api/docs.json`).
+
 ## Autenticación
 
 Laravel Sanctum con token de API. Se obtiene en `POST /api/auth/login` y se envía en cada petición protegida:

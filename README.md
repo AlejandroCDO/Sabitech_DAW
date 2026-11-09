@@ -4,9 +4,7 @@ Proyecto Final de Ciclo DAW
 
 # Integrantes
 
-Alberto Bellanato
-Alejandro Company
-Marc Penadés
+Alberto Bellanato, Alejandro Company y Marc Penadés
 
 # Arquitectura
 
@@ -14,53 +12,80 @@ Marc Penadés
 - `frontend/`: SPA en React con Vite (de momento sin conexión con la API).
 - Base de datos: MySQL 8 en Docker (`docker-compose.yml`). Las pruebas automáticas usan SQLite en memoria.
 - Perfiles: `admin`, `acceso` (personal de acceso) y `asistente`.
-- Documentación de la API: [`docs/backend/API.md`](docs/backend/API.md). QR y correo: [`docs/backend/QR_Y_CORREO.md`](docs/backend/QR_Y_CORREO.md).
+- Documentación de la API: Swagger UI en `http://localhost:8000/api/docs` (JSON en `/api/docs.json`) y [`docs/backend/API.md`](docs/backend/API.md). QR y correo: [`docs/backend/QR_Y_CORREO.md`](docs/backend/QR_Y_CORREO.md).
 
 # Puesta en marcha del backend
 
-Requisitos: PHP 8.4, Composer y Docker.
+Requisitos: Docker Desktop, PHP 8.4 y Composer.
 
-1. Base de datos MySQL con Docker. `docker-compose.yml` lee las variables `MYSQL_DATABASE`, `MYSQL_ROOT_PASSWORD`, `MYSQL_USER` y `MYSQL_PASSWORD` de un `.env` en la raíz (parta de `.env.example`):
+## 1. Arrancar la base de datos (Docker)
 
-   ```
-   docker compose up -d
-   ```
+Con Docker Desktop en marcha, desde la raíz del proyecto:
 
-2. Configuración de Laravel:
+```
+docker compose up -d
+```
 
-   ```
-   cd backend
-   cp .env.example .env
-   ```
+`docker-compose.yml` lee las variables `MYSQL_*` de un `.env` en la raíz (hay un `.env.example` como plantilla). El contenedor se llama `sabitech_mysql` y expone MySQL en `127.0.0.1:3306`.
 
-   Edite `backend/.env` con los mismos datos de base de datos que usó en Docker (`DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) y los datos del buzón de correo de pruebas (`MAIL_*`). Para la demo ponga `APP_DEBUG=false`. No suba `.env` al repositorio.
+## 2. Crear la estructura de la base de datos
 
-3. Dependencias, clave y datos:
+La estructura oficial del modelo de datos está en [`database/Sentencia Creación.txt`](database/Sentencia Creación.txt). Se importa **tal cual** (crea `sabitech_db` y sus 7 tablas, sin datos). Ejecute esto **desde `cmd.exe`** en la raíz del proyecto (la redirección `<` no existe en PowerShell):
 
-   ```
-   composer install
-   php artisan key:generate
-   php artisan migrate --seed
-   ```
+```
+docker exec -i sabitech_mysql mysql -uroot -pcambiar_esta_contrasena_root --default-character-set=utf8mb4 < "database\Sentencia Creación.txt"
+```
 
-4. Servidor de desarrollo y pruebas:
+La base resultante debe tener exactamente: `roles`, `ubicaciones`, `ponentes`, `usuarios`, `charlas`, `reservas` y `asistencias`.
 
-   ```
-   php artisan serve
-   composer test
-   ```
+## 3. Configurar Laravel
 
-   `composer test` usa SQLite en memoria (no toca la base de datos de desarrollo).
+```
+cd backend
+cp .env.example .env
+php artisan key:generate
+composer install
+```
+
+Rellene `backend/.env` con los mismos datos de base de datos que usó en Docker (`DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) y los datos del buzón de correo de pruebas (`MAIL_*`). Para la demo ponga `APP_DEBUG=false`. No suba `.env` al repositorio.
+
+## 4. Arrancar la API
+
+```
+php artisan serve
+```
+
+- API: `http://localhost:8000/api/...`
+- **Swagger UI: http://localhost:8000/api/docs** (JSON de OpenAPI en `/api/docs.json`). Para probar endpoints protegidos, obtenga el token con `POST /api/auth/login` y péguelo en el botón _Authorize_.
+- Pruebas: `composer test` (usa SQLite en memoria, no toca la base de datos de desarrollo).
+
+# Añadir datos a la base de datos
+
+La base importada está vacía. Para poblarla:
+
+- **Datos de laboratorio (recomendado para la demo)**, desde `backend/`:
+
+  ```
+  php artisan db:seed
+  ```
+
+  No use `php artisan migrate`: la estructura ya está creada desde la sentencia y las migraciones intentarían crear tablas que no forman parte del modelo.
+
+- **Datos propios**: insértelos con cualquier cliente MySQL (phpMyAdmin, DBeaver, MySQL Workbench) conectando a `127.0.0.1:3306`, base `sabitech_db`, usuario `sabitech_user` y contraseña `cambiar_esta_contrasena`; o importe un `.sql` con `INSERT`.
+
+  > **Login:** el modelo de datos no incluye la tabla `personal_access_tokens` que Sanctum necesita para emitir tokens. Swagger y los endpoints públicos funcionan sin ella, pero para usar `POST /api/auth/login` hay que crearla una vez con:
+  > `php artisan migrate --path=database/migrations/2026_11_04_000008_create_personal_access_tokens_table.php`
+  > (añade solo esa tabla; el resto del modelo no cambia).
 
 # Usuarios de laboratorio
 
-Los crea el seeder (`php artisan migrate --seed`); son datos ficticios y la contraseña de todos es `password`. No usar fuera de laboratorio.
+Los crea el seeder (`php artisan db:seed`); son datos ficticios y la contraseña de todos es `password`. No usar fuera de laboratorio.
 
-| Correo | Rol |
-|---|---|
-| `admin@sabitech.test` | admin |
-| `acceso@sabitech.test` | acceso |
-| `asistente@sabitech.test` | asistente |
+| Correo                     | Rol       |
+| -------------------------- | --------- |
+| `admin@sabitech.test`      | admin     |
+| `acceso@sabitech.test`     | acceso    |
+| `asistente@sabitech.test`  | asistente |
 | `asistente2@sabitech.test` | asistente |
 
 El seeder también crea ubicaciones en Valencia y Alicante, ponentes, cinco charlas futuras (una con el aforo completo y una cancelada) y varias reservas.

@@ -8,7 +8,7 @@ use OpenApi\Attributes as OAT;
  * Definición global de la documentación OpenAPI de la API de SABITECH.
  *
  * El paquete l5-swagger (Swagger UI) escanea app/Api/OpenApi y los
- * controladores para construir la especificación que sirve en /api/documentation.
+ * controladores para construir la especificación que sirve en /api/docs.
  */
 #[OAT\Info(
     title: 'API de SABITECH',

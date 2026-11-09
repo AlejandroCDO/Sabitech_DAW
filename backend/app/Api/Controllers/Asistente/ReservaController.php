@@ -3,6 +3,7 @@
 namespace App\Api\Controllers\Asistente;
 
 use App\Api\DTOs\Reservas\CrearReservaData;
+use App\Api\Services\Reservas\ConfirmacionReservaService;
 use App\Enums\EstadoReserva;
 use App\Http\Controllers\Controller;
 use App\Models\Charla;
@@ -10,12 +11,12 @@ use App\Models\Reserva;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use OpenApi\Attributes as OAT;
-use Throwable;
 
 class ReservaController extends Controller
 {
+    public function __construct(private readonly ConfirmacionReservaService $confirmaciones) {}
+
     #[OAT\Get(
         path: '/api/asistente/reservas',
         operationId: 'listarReservasAsistente',
@@ -141,7 +142,7 @@ class ReservaController extends Controller
         // La plaza queda garantizada al reservar (estado confirmada). Si el
         // correo falla la reserva no se pierde; queda pendiente de
         // reenvío y el usuario puede solicitarlo desde su listado.
-        $this->enviarConfirmacion($reserva);
+        $this->confirmaciones->enviar($reserva);
 
         return response()->json(
             $reserva->load(['charla.ubicacion', 'charla.ponente']),
@@ -196,43 +197,6 @@ class ReservaController extends Controller
         return response()->json(
             $reserva->fresh(['charla.ubicacion', 'charla.ponente']),
         );
-    }
-
-    /**
-     * Envía el correo de confirmación con la vista disponible
-     * (resources/views/email/confirmacion-reserva.blade.php), que recibirá
-     * la reserva (con charla, ubicación, ponente y usuario) y la referencia.
-     *
-     * Solo se registran envíos reales; un fallo del correo no consume intentos.
-     */
-    private function enviarConfirmacion(Reserva $reserva): bool
-    {
-        $reserva->load(['charla.ubicacion', 'charla.ponente', 'usuario']);
-
-        try {
-            Mail::send('email.confirmacion-reserva', [
-                'reserva' => $reserva,
-                'referencia' => self::referenciaDe($reserva),
-            ], function ($mensaje) use ($reserva) {
-                $mensaje->to($reserva->usuario->email, $reserva->usuario->nombre)
-                    ->subject('Confirmación de reserva: '.$reserva->charla->titulo);
-            });
-        } catch (Throwable) {
-            return false;
-        }
-
-        $reserva->update([
-            'email_intentos' => $reserva->email_intentos + 1,
-            'email_ultimo_envio' => now(),
-        ]);
-
-        return true;
-    }
-
-    /** Referencia estable asociada a la reserva (SAB-000031). */
-    private static function referenciaDe(Reserva $reserva): string
-    {
-        return 'SAB-'.str_pad((string) $reserva->id, 6, '0', STR_PAD_LEFT);
     }
 
     /** Secreto aleatorio de 64 caracteres, único en reservas (uq_reservas_qr_secret). */

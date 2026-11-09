@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum EstadoReserva: string
 {
-    case Pendiente  = 'pendiente';
+    case Pendiente = 'pendiente';
     case Confirmada = 'confirmada';
-    case Cancelada  = 'cancelada';
+    case Cancelada = 'cancelada';
 }

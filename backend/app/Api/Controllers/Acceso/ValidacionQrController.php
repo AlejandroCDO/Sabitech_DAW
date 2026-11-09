@@ -18,9 +18,9 @@ final class ValidacionQrController extends Controller
         operationId: 'validarAsistenciaQr',
         description: 'Valida el token del QR que muestra el asistente (obtenido en '
             .'`GET /api/asistente/reservas/{reserva}/qr`) y registra su asistencia a la '
-            .'charla indicada. Devuelve 409 si el token ya no es válido (caducado o '
-            .'incorrecto), la reserva no está activa, la charla no coincide o la '
-            .'asistencia ya estaba registrada.',
+            .'charla indicada. Devuelve 422 si el token es inválido o ha caducado o '
+            .'la charla no coincide; 409 si la reserva no está activa o la asistencia '
+            .'ya estaba registrada.',
         tags: ['Personal de acceso'],
         requestBody: new OAT\RequestBody(
             required: true,

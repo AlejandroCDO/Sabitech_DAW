@@ -1,31 +1,25 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
-// CONTROLADORES PÚBLICOS
-use App\Api\Controllers\Public\CharlaController as PublicCharlaController;
-use App\Api\Controllers\Public\ProvinciaController;
-
-// AUTENTICACIÓN
-use App\Api\Controllers\Auth\AuthController;
-
-// ASISTENTE
-use App\Api\Controllers\Asistente\ReservaController;
-use App\Api\Controllers\Asistente\QrController;
-use App\Api\Controllers\Asistente\ReenvioConfirmacionController;
-
-// PERSONAL DE ACCESO
 use App\Api\Controllers\Acceso\BusquedaReservaController;
-use App\Api\Controllers\Acceso\ValidacionQrController;
+// CONTROLADORES PÚBLICOS
 use App\Api\Controllers\Acceso\ValidacionManualController;
-
-// ADMINISTRACIÓN
+use App\Api\Controllers\Acceso\ValidacionQrController;
+// AUTENTICACIÓN
+use App\Api\Controllers\Admin\AsistenciaCharlaController;
+// ASISTENTE
 use App\Api\Controllers\Admin\CharlaController as AdminCharlaController;
 use App\Api\Controllers\Admin\PonenteController;
-use App\Api\Controllers\Admin\UbicacionController;
 use App\Api\Controllers\Admin\ReservaCharlaController;
-use App\Api\Controllers\Admin\AsistenciaCharlaController;
-
+// PERSONAL DE ACCESO
+use App\Api\Controllers\Admin\UbicacionController;
+use App\Api\Controllers\Asistente\QrController;
+use App\Api\Controllers\Asistente\ReenvioConfirmacionController;
+// ADMINISTRACIÓN
+use App\Api\Controllers\Asistente\ReservaController;
+use App\Api\Controllers\Auth\AuthController;
+use App\Api\Controllers\Public\CharlaController as PublicCharlaController;
+use App\Api\Controllers\Public\ProvinciaController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +30,6 @@ use App\Api\Controllers\Admin\AsistenciaCharlaController;
 Route::get('/charlas', [PublicCharlaController::class, 'index']);
 Route::get('/charlas/{charla}', [PublicCharlaController::class, 'show']);
 Route::get('/provincias', ProvinciaController::class);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -57,7 +50,6 @@ Route::prefix('auth')->group(function () {
     });
 
 });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -89,7 +81,6 @@ Route::prefix('asistente')
 
     });
 
-
 /*
 |--------------------------------------------------------------------------
 | RUTAS DEL PERSONAL DE ACCESO
@@ -119,7 +110,6 @@ Route::prefix('acceso')
         );
 
     });
-
 
 /*
 |--------------------------------------------------------------------------

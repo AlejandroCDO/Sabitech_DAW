@@ -8,6 +8,6 @@ namespace App\Enums;
  */
 enum MetodoValidacion: string
 {
-    case Qr     = 'qr';
+    case Qr = 'qr';
     case Manual = 'manual';
 }

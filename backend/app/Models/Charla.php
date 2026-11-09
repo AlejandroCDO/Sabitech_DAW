@@ -22,11 +22,11 @@ class Charla extends Model
     protected function casts(): array
     {
         return [
-            'inicio'          => 'datetime',
-            'fin'             => 'datetime',
-            'aforo'           => 'integer',
+            'inicio' => 'datetime',
+            'fin' => 'datetime',
+            'aforo' => 'integer',
             'plazas_ocupadas' => 'integer',
-            'cancelada'       => 'boolean',
+            'cancelada' => 'boolean',
         ];
     }
 

@@ -154,7 +154,7 @@
                 "tags": [
                     "Personal de acceso"
                 ],
-                "description": "Valida el token del QR que muestra el asistente (obtenido en `GET /api/asistente/reservas/{reserva}/qr`) y registra su asistencia a la charla indicada. Devuelve 409 si el token ya no es válido (caducado o incorrecto), la reserva no está activa, la charla no coincide o la asistencia ya estaba registrada.",
+                "description": "Valida el token del QR que muestra el asistente (obtenido en `GET /api/asistente/reservas/{reserva}/qr`) y registra su asistencia a la charla indicada. Devuelve 422 si el token es inválido o ha caducado o la charla no coincide; 409 si la reserva no está activa o la asistencia ya estaba registrada.",
                 "operationId": "validarAsistenciaQr",
                 "requestBody": {
                     "required": true,
@@ -1446,7 +1446,7 @@
                 "tags": [
                     "Asistente"
                 ],
-                "summary": "Token temporal del QR de una reserva propia y activa.\n\nLa validez caduca en la próxima frontera de 30 s (máximo 30 s), de\nmodo que la renovación en pantalla coincida con una caducidad real\ncomprobable en el servidor.\n\nEl token es compatible con la validación del personal de acceso:\ntoken = hash_hmac('sha256', qr_secret, expira_en), de modo que\nValidaciónQr puede recomputarlo para la ventana actual (y tolerar la\nanterior) sin guardar estado.",
+                "summary": "Token temporal del QR de una reserva propia y activa.\n\nLa validez caduca en la próxima frontera de 30 s (máximo 30 s), de\nmodo que la renovación en pantalla coincida con una caducidad real\ncomprobable en el servidor.\n\nFormato: {reservaId}.{ventana}.{firma}\nfirma = hash_hmac('sha256', \"{reservaId}.{ventana}\", reservas.qr_secret).",
                 "description": "Token HMAC temporal del QR de una reserva propia, con el momento exacto de caducidad (frontera global de 30 s). Falla con 409 si la reserva o su charla están canceladas o la charla ya terminó.",
                 "operationId": "obtenerQrReserva",
                 "parameters": [

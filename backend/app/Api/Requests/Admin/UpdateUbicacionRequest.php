@@ -14,13 +14,13 @@ class UpdateUbicacionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre'        => ['sometimes', 'required', 'string', 'max:50'],
-            'provincia'     => ['sometimes', 'required', 'string', 'max:100'],
-            'municipio'     => ['sometimes', 'required', 'string', 'max:100'],
-            'calle'         => ['sometimes', 'required', 'string', 'max:100'],
+            'nombre' => ['sometimes', 'required', 'string', 'max:50'],
+            'provincia' => ['sometimes', 'required', 'string', 'max:100'],
+            'municipio' => ['sometimes', 'required', 'string', 'max:100'],
+            'calle' => ['sometimes', 'required', 'string', 'max:100'],
             'codigo_postal' => ['sometimes', 'required', 'string', 'max:10'],
-            'numero'        => ['sometimes', 'required', 'string', 'max:10'],
-            'puerta'        => ['sometimes', 'nullable', 'string', 'max:10'],
+            'numero' => ['sometimes', 'required', 'string', 'max:10'],
+            'puerta' => ['sometimes', 'nullable', 'string', 'max:10'],
         ];
     }
 }

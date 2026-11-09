@@ -19,10 +19,8 @@ class QrController extends Controller
      * modo que la renovación en pantalla coincida con una caducidad real
      * comprobable en el servidor.
      *
-     * El token es compatible con la validación del personal de acceso:
-     * token = hash_hmac('sha256', qr_secret, expira_en), de modo que
-     * ValidaciónQr puede recomputarlo para la ventana actual (y tolerar la
-     * anterior) sin guardar estado.
+     * Formato: {reservaId}.{ventana}.{firma}
+     * firma = hash_hmac('sha256', "{reservaId}.{ventana}", reservas.qr_secret).
      */
     #[OAT\Get(
         path: '/api/asistente/reservas/{reserva}/qr',
@@ -69,9 +67,11 @@ class QrController extends Controller
         $expiraEn = now()
             ->setTimestamp(($ventanaActual + 1) * QrTokenData::CADUCIDAD_SEGUNDOS);
 
+        $firma = hash_hmac('sha256', $reserva->id.'.'.$ventanaActual, $reserva->qr_secret);
+
         $qrToken = QrTokenData::fromArray([
             'reserva_id' => $reserva->id,
-            'token' => hash_hmac('sha256', $reserva->qr_secret, (string) $expiraEn->getTimestamp()),
+            'token' => $reserva->id.'.'.$ventanaActual.'.'.$firma,
             'expira_en' => $expiraEn,
         ]);
 

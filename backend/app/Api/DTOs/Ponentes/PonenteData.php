@@ -10,8 +10,7 @@ final readonly class PonenteData
         public ?string $fotoUrl = null,
         public ?string $especialidad = null,
         public ?string $linkedinUrl = null,
-    ) {
-    }
+    ) {}
 
     /** Recibe los datos ya validados (FormRequest->validated()). */
     public static function fromArray(array $datos): self

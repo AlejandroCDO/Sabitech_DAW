@@ -25,8 +25,8 @@ class Reserva extends Model
     protected function casts(): array
     {
         return [
-            'estado'             => EstadoReserva::class,
-            'email_intentos'     => 'integer',
+            'estado' => EstadoReserva::class,
+            'email_intentos' => 'integer',
             'email_ultimo_envio' => 'datetime',
         ];
     }

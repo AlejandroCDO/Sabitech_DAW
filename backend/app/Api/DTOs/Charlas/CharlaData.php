@@ -14,8 +14,7 @@ final readonly class CharlaData
         public CarbonImmutable $inicio,
         public CarbonImmutable $fin,
         public int $aforo,
-    ) {
-    }
+    ) {}
 
     /** Recibe los datos ya validados (FormRequest->validated()). */
     public static function fromArray(array $datos): self

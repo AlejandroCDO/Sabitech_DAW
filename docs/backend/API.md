@@ -14,6 +14,8 @@ Authorization: Bearer <token>
 
 Los tokens no caducan automáticamente (solo se revocan con logout). El acceso por perfil lo comprueba el middleware `role:<nombres>` en el servidor; los roles son `admin`, `acceso` y `asistente`.
 
+Sanctum necesita la tabla técnica `personal_access_tokens`. Se crea con `database/Sanctum_PersonalAccessTokens.sql`; no forma parte de las 7 tablas del modelo de datos.
+
 ## Formatos de respuesta de error (estado actual)
 
 El código actual **no tiene un formato de error único**. Hay tres:
@@ -22,7 +24,7 @@ El código actual **no tiene un formato de error único**. Hay tres:
 |---|---|---|
 | Validación de Laravel | 422 | `{"message": "...", "errors": {"campo": ["..."]}}` |
 | `abort()` / `HttpException` | 401 del middleware de rol, 403, 404, 409 de `ReservaController` | `{"message": "..."}` |
-| `ApiException` y derivadas | Excepciones de `app/Api/Exceptions` (usadas por los servicios, aún no conectados a los controladores) | `{"message": "...", "code": "..."}` |
+| `HttpResponseException` | Validación de QR y asistencia manual en `AsistenciaService` | `{"message": "...", "code": "..."}` |
 
 Además, Sanctum devuelve `{"message": "Unauthenticated."}` (401) cuando falta el token o no es válido. Un identificador de modelo inexistente produce 404 con el mensaje estándar de Laravel.
 
@@ -77,7 +79,7 @@ Autenticación: token con rol `asistente`. Sin token: 401. Con otro rol: 403 `{"
   - Ya existe una reserva no cancelada del usuario para esa charla.
   - No quedan plazas.
 - 422: `charla_id` ausente, no entero o inexistente.
-- Tras reservar se intenta enviar el correo de confirmación; si falla, la reserva se conserva. (La plantilla del correo está pendiente: ver `QR_Y_CORREO.md`.)
+- Tras reservar se envía el correo de confirmación; si falla, la reserva se conserva y se puede reenviar. La plantilla está en `backend/resources/views/email/confirmacion-reserva.blade.php`.
 
 ### DELETE /api/asistente/reservas/{reserva}
 - Cancela una reserva propia y libera la plaza. Es idempotente en este controlador: si ya estaba cancelada, responde 200 sin cambios.
@@ -85,11 +87,14 @@ Autenticación: token con rol `asistente`. Sin token: 401. Con otro rol: 403 `{"
 - 404: la reserva no existe o pertenece a otro usuario.
 
 ### GET /api/asistente/reservas/{reserva}/qr
-- Token temporal del QR. **Pendiente de unificar**: el formato emitido no es el acordado (ver `QR_Y_CORREO.md`).
+- Devuelve `reserva_id`, `token` y `expira_en`.
+- El token tiene el formato `{reservaId}.{ventana}.{firma}` y cambia cada 30 segundos.
 - 404: reserva ajena. 409: reserva cancelada, charla cancelada o ya terminada.
 
 ### POST /api/asistente/reservas/{reserva}/reenviar-confirmacion
-- Reenvía el correo de confirmación. Pendiente de revisión (ver `QR_Y_CORREO.md`).
+- Reenvía el correo de confirmación de una reserva propia.
+- 200: `{"email_enviado": true, "email_intentos": 2, "email_ultimo_envio": "..."}`.
+- 429: se ha superado el máximo de 5 envíos o no han pasado 60 segundos desde el último.
 
 ## Resto de rutas (resumen)
 

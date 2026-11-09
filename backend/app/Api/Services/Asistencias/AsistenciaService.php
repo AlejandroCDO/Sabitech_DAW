@@ -17,14 +17,16 @@ use Illuminate\Validation\ValidationException;
  * Registra la asistencia por QR o de forma manual.
  *
  * Token: {reservaId}.{ventana}.{firma}
- *   ventana = floor(time() / 30), con el reloj del servidor.
+ *   ventana = floor(now()->getTimestamp() / 30), con el reloj del servidor.
  *   firma   = hash_hmac('sha256', "{reservaId}.{ventana}", reservas.qr_secret).
  * Se aceptan la ventana actual y la anterior, así que un código vale entre 30 y 60 s.
  */
 class AsistenciaService
 {
     private const SEGUNDOS_VENTANA = 30;
+
     private const VENTANAS_TOLERADAS = 1;
+
     private const MINUTOS_ANTES = 30;
 
     public function registrarPorQr(ValidacionQrData $datos, Usuario $validador): Asistencia
@@ -43,7 +45,7 @@ class AsistenciaService
         }
 
         $firmaEsperada = hash_hmac('sha256', "{$reservaId}.{$ventana}", $reserva->qr_secret);
-        $ventanaActual = intdiv(time(), self::SEGUNDOS_VENTANA);
+        $ventanaActual = intdiv(now()->getTimestamp(), self::SEGUNDOS_VENTANA);
 
         if (! hash_equals($firmaEsperada, $firma)
             || $ventana > $ventanaActual

@@ -7,8 +7,7 @@ final readonly class ValidacionQrData
     public function __construct(
         public string $qrToken,
         public int $charlaId,
-    ) {
-    }
+    ) {}
 
     /** Recibe los datos ya validados. */
     public static function fromArray(array $datos): self

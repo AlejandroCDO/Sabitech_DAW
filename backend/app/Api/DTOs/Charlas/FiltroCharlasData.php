@@ -18,8 +18,7 @@ final readonly class FiltroCharlasData
         public ?string $busqueda = null,
         public int $pagina = 1,
         public int $porPagina = 10,
-    ) {
-    }
+    ) {}
 
     /** Recibe los parámetros de la URL ya validados. */
     public static function fromArray(array $datos): self

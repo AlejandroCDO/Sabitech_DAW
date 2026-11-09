@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 #[Fillable(['reserva_id', 'validado_por', 'qr_token', 'validada_en'])]
 #[Hidden(['qr_token'])]
@@ -33,17 +32,5 @@ class Asistencia extends Model
     public function validador(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'validado_por');
-    }
-
-    /** La charla se obtiene por la reserva. */
-    public function charla(): HasOneThrough
-    {
-        return $this->hasOneThrough(Charla::class, Reserva::class, 'id', 'id', 'reserva_id', 'charla_id');
-    }
-
-    /** El asistente también se obtiene por la reserva. */
-    public function usuario(): HasOneThrough
-    {
-        return $this->hasOneThrough(Usuario::class, Reserva::class, 'id', 'id', 'reserva_id', 'usuario_id');
     }
 }
